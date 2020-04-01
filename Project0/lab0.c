@@ -25,12 +25,6 @@ void handleseg() {
 }
 
 int main(int argc, char *argv[]) {
-  // Check first argument for invalids
-  if((argc > 1) && ((argv[1][0] != '-') || (argv[1][1] != '-') || (argv[1][2] == '\0'))) {
-    printf("Error: invalid argument supplied: %s\n", argv[1]);
-    // USAGE MESSAGE HERE
-    exit(1);
-  }
 
   // Option List
   static struct option long_options[] = {
@@ -63,7 +57,7 @@ int main(int argc, char *argv[]) {
         }
         if (close(fd) < 0) {
           fprintf(stderr, "Error with --input, could not close %s: %s\n", optarg, strerror(errno));
-          exit(3);
+          exit(2);
         }
         break;
 
@@ -96,19 +90,13 @@ int main(int argc, char *argv[]) {
         break;
 
       default:
-        fprintf(stderr, "Error, invalid option: %s", argv[optind-1]);
-        // Usage message
+        fprintf(stderr, "Usage: ./lab0 [--input=file] [--output=file] [--segfault] [--catch]\n");
         exit(1);
-    }
-    if ((optind < argc) && ((argv[optind][0] != '-') || (argv[optind][1] != '-'))) {
-      printf("Error: invalid argument supplied: %s\n", argv[optind]);
-      // USAGE MESSAGE HERE
-      exit(1);
     }
   }
 
   if(catch_flag) {
-    if(signal(11, handleseg) == SIG_ERR) {
+    if(signal(SIGSEGV, handleseg) == SIG_ERR) {
       fprintf(stderr, "Error with --catch: %s\n", strerror(errno));
     }
   }
@@ -122,14 +110,14 @@ int main(int argc, char *argv[]) {
     // Check for read Error
     if (n < 0) {
       fprintf(stderr, "Read from file descriptor 0 failed: %s\n", strerror(errno));
-      exit(1);
+      exit(2);
     }
 
     // Write to stdout
     n = write(1, &c, 1);
     if (n < 0) {
       fprintf(stderr, "Write to file descriptor 1 failed: %s\n", strerror(errno));
-      exit(1);
+      exit(3);
     }
   }
   exit(0);
