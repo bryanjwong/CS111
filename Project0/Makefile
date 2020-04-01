@@ -3,12 +3,12 @@
 # ID: 805111517
 
 lab0: lab0.c
-	gcc -Wall -Wextra -g lab0.c -o lab0
+	@gcc -Wall -Wextra -g lab0.c -o lab0
 
-.PHONY: clean check
+.PHONY: clean check dist
 
 clean:
-	rm lab0
+	@rm lab0 lab0-805111517.tar.gz
 
 check:
 	@echo "test input" > inputfile
@@ -36,3 +36,4 @@ check:
 	@rm outputfile[1-4] inputfile correct
 
 dist:
+	tar -czvf lab0-805111517.tar.gz Makefile README lab0.c backtrack.png breakpoint.pg
