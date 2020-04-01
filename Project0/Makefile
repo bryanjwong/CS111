@@ -1,5 +1,5 @@
-# Name: Bryan Wong
-# Email: bryanjwong@g.ucla.edu
+# NAME: Bryan Wong
+# EMAIL: bryanjwong@g.ucla.edu
 # ID: 805111517
 
 lab0: lab0.c
@@ -8,7 +8,7 @@ lab0: lab0.c
 .PHONY: clean check dist
 
 clean:
-	@rm lab0 lab0-805111517.tar.gz
+	@-rm lab0 lab0-805111517.tar.gz 2>/dev/null || true
 
 check:
 	@echo "test input" > inputfile

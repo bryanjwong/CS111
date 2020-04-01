@@ -1,8 +1,9 @@
 /***
-    lab0.c
-    Author: Bryan Wong
+    NAME: Bryan Wong
+    EMAIL: bryanjwong@g.ucla.edu
     ID: 805111517
-
+    
+    lab0.c
     Copy standard input to standard output using system calls
 ***/
 
