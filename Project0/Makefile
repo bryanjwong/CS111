@@ -36,4 +36,4 @@ check:
 	@rm outputfile[1-4] inputfile correct
 
 dist:
-	tar -czvf lab0-805111517.tar.gz Makefile README lab0.c backtrack.png breakpoint.pg
+	tar -czvf lab0-805111517.tar.gz Makefile README lab0.c backtrace.png breakpoint.png

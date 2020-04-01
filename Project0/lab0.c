@@ -28,7 +28,7 @@ void handleseg() {
 int main(int argc, char *argv[]) {
 
   // Option List
-  static struct option long_options[] = {
+  struct option long_options[] = {
     {"input",     required_argument,  0, 'i'},
     {"output",    required_argument,  0, 'o'},
     {"segfault",  no_argument,        0, 's'},
@@ -121,5 +121,7 @@ int main(int argc, char *argv[]) {
       exit(3);
     }
   }
+  close(0);
+  close(1);
   exit(0);
 }
