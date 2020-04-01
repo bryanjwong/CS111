@@ -2,7 +2,7 @@
 # EMAIL: bryanjwong@g.ucla.edu
 # ID: 805111517
 
-lab0: lab0.c
+default:
 	@gcc -Wall -Wextra -g lab0.c -o lab0
 
 .PHONY: clean check dist
