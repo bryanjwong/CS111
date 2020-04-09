@@ -3,8 +3,12 @@
     EMAIL: bryanjwong@g.ucla.edu
     ID: 805111517
 
-    lab1.c
-    Copy standard input to standard output using system calls
+    lab1a.c
+    Configure terminal to use non-canonical
+    input that echoes user keyboard input to
+    stdout. If --shell option is set, pass
+    input to shell program and pass shell 
+    output to stdout.
 ***/
 
 #include <stdio.h>
@@ -16,6 +20,7 @@
 #include <getopt.h>
 #include <poll.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 struct termios initial_termios_p;
 
@@ -78,7 +83,7 @@ void
 handle_exit() {
   int wstatus;
   wait(&wstatus);
-  fprintf(stderr, "SHELL EXIT SIGNAL=%d STATUS=%d\r\n", (wstatus & 0x007f), (wstatus & 0xff00));
+  fprintf(stderr, "SHELL EXIT SIGNAL=%d STATUS=%d\r\n", (wstatus & 0x007f), ((wstatus & 0xff00) >> 8));
   exit(0);
 }
 
