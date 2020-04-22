@@ -109,7 +109,7 @@ main(int argc, char *argv[]) {
   }
   listen(sockfd,5);
   clilen = sizeof(cli_addr);
-  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+  newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, (socklen_t *) &clilen);
   if (newsockfd < 0) {
     fprintf(stderr, "Error on accept: %s", strerror(errno));
     exit(1);
