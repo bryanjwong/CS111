@@ -3,12 +3,7 @@
     EMAIL: bryanjwong@g.ucla.edu
     ID: 805111517
 
-    lab1b.c
-    Configure terminal to use non-canonical
-    input that echoes user keyboard input to
-    stdout. If --shell option is set, pass
-    input to shell program and pass shell
-    output to stdout.
+    lab1b-client.c
 ***/
 
 #include <stdio.h>
