@@ -25,6 +25,8 @@
 #include <netdb.h>
 #include "zlib.h"
 
+#define CHUNK 16384
+
 struct termios initial_termios_p;
 z_stream sendstream, receivestream;
 
@@ -212,7 +214,7 @@ main(int argc, char *argv[]) {
             c[i] = '\n';
         }
 
-        char compressed[256];
+        char compressed[CHUNK];
         if (compress_flag) {
           sendstream.avail_in = (uInt) n;
           sendstream.next_in = (Bytef *) c;
@@ -282,7 +284,7 @@ main(int argc, char *argv[]) {
           }
         }
 
-        char decompressed[1024];
+        char decompressed[CHUNK];
         if (compress_flag) {
           receivestream.avail_in = (uInt) n;
           receivestream.next_in = (Bytef *) c;

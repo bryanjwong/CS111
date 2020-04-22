@@ -21,6 +21,8 @@
 #include <netinet/in.h>
 #include "zlib.h"
 
+#define CHUNK 16384
+
 z_stream sendstream, receivestream;
 
 // Handle exiting program in one of 3 cases: closing pipe from client,
@@ -194,7 +196,7 @@ main(int argc, char *argv[]) {
             close(termtoshell_fd[1]);
           }
 
-          char decompressed[1024];
+          char decompressed[CHUNK];
           if (compress_flag) {
             receivestream.avail_in = (uInt) n;
             receivestream.next_in = (Bytef *) c;
@@ -285,7 +287,7 @@ main(int argc, char *argv[]) {
       }
       write(newsockfd, c, n);
 
-      char decompressed[1024];
+      char decompressed[CHUNK];
       ssize_t decompress_size;
       if (compress_flag) {
         receivestream.avail_in = (uInt) n;
