@@ -196,7 +196,7 @@ main(int argc, char *argv[]) {
             close(termtoshell_fd[1]);
           }
 
-          char decompressed[CHUNK];
+          char decompressed[256];
           if (compress_flag) {
             receivestream.avail_in = (uInt) n;
             receivestream.next_in = (Bytef *) c;

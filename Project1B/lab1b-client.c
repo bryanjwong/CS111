@@ -214,7 +214,7 @@ main(int argc, char *argv[]) {
             c[i] = '\n';
         }
 
-        char compressed[CHUNK];
+        char compressed[256];
         if (compress_flag) {
           sendstream.avail_in = (uInt) n;
           sendstream.next_in = (Bytef *) c;
