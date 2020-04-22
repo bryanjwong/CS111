@@ -146,7 +146,7 @@ main(int argc, char *argv[]) {
 
   if (logfile) {
     // Create file if it doesnt exist and append
-    logfd = open(logfile, O_WRONLY | O_APPEND | O_CREAT);
+    logfd = creat(logfile, 0666);
     if (logfd < 0) {
       fprintf(stderr, "Error with logfile, could not creat %s: %s\n", logfile, strerror(errno));
       exit(1);
@@ -272,6 +272,9 @@ main(int argc, char *argv[]) {
           fprintf(stderr, "Read from socket input failed: %s\r\n", strerror(errno));
           exit(2);
         }
+	if (n == 0) {
+	  exit(0);
+	}
         if (logfd) {
           char numbytes[21];
           int numbytes_size = sprintf(numbytes, "%zd", n);

@@ -9,7 +9,7 @@ default:
 .PHONY: clean dist
 
 clean:
-	@-rm server client lab1b-805111517.tar.gz 2>/dev/null || true
+	@-rm lab1b-server lab1b-client lab1b-805111517.tar.gz 2>/dev/null || true
 
 dist:
 	tar -czvf lab1b-805111517.tar.gz Makefile README lab1b-server.c lab1b-client.c
