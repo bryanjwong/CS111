@@ -24,6 +24,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <netdb.h>
 
@@ -64,10 +66,10 @@ void
 handle_echo(char c) {
   int n;
   if (c == '\003') {
-    n = write(1, "^C\r\n", 4);
+    n = write(1, "^C", 2);
   }
   if (c == '\004') {
-    n = write(1, "^D\r\n", 2);
+    n = write(1, "^D", 2);
   }
   else if ((c == '\r') || (c == '\n')) {
     n = write(1, "\r", 1);
@@ -93,9 +95,14 @@ main(int argc, char *argv[]) {
   };
   int opt_code;
   char * port = NULL;
+  char * logfile = NULL;
+  int logfd = 0;
   while ((opt_code = getopt_long(argc, argv, "", long_options, 0)) != -1) {
     if (opt_code == 'p') {
       port = optarg;
+    }
+    else if (opt_code == 'l') {
+      logfile = optarg;
     }
     else {
       fprintf(stderr, "Usage: ./lab1b-client --port=portnum [--log=filename]\n");
@@ -104,10 +111,18 @@ main(int argc, char *argv[]) {
   }
 
   // Check that mandatory port option is specified
-  if(!port) {
+  if (!port) {
     fprintf(stderr, "Error, no --port argument specified\n");
     fprintf(stderr, "Usage: ./lab1b-client --port=portnum [--log=filename]\n");
     exit(1);
+  }
+
+  if (logfile) {
+    logfd = creat(logfile, 0666);
+    if (logfd < 0) {
+      fprintf(stderr, "Error with logfile, could not creat %s: %s\n", logfile, strerror(errno));
+      exit(1);
+    }
   }
 
   int sockfd, portno;
@@ -149,6 +164,7 @@ main(int argc, char *argv[]) {
 
   char c[256];
   ssize_t n;
+
   while(1) {
     int ret = poll(fds, 2, 0);
     if (ret < 0) {
@@ -165,6 +181,19 @@ main(int argc, char *argv[]) {
           fprintf(stderr, "Read from stdin failed: %s\r\n", strerror(errno));
           exit(1);
         }
+
+        if (logfd) {
+          char numbytes[21];
+          int numbytes_size = sprintf(numbytes, "%zd", n);
+          if (numbytes_size > 0) {
+            if (write(logfd, "SENT ", 5) < 0) {
+              fprintf(stderr, "Write to log file failed: %s\r\n", strerror(errno));
+              exit(1);
+            }
+            write(logfd, numbytes, numbytes_size);
+            write(logfd, " bytes: ", 8);
+          }
+        }
         // Write input to socket
         for (ssize_t i = 0; i < n; i++) {
           handle_echo(c[i]);
@@ -173,6 +202,26 @@ main(int argc, char *argv[]) {
             fprintf(stderr, "Write to socket failed: %s\r\n", strerror(errno));
             exit(1);
           }
+
+          if (logfd) {
+            switch(c[i]) {
+              case '\003':
+                write(logfd, "^C", 2);
+                break;
+              case '\004':
+                write(logfd, "^D", 2);
+                break;
+              case '\r':
+                write(logfd, "\n", 1);
+                break;
+              default:
+                write(logfd, c+i, 1);
+                break;
+            }
+          }
+        }
+        if (logfd) {
+          write(logfd, "\n", 1);
         }
       }
 
@@ -187,6 +236,18 @@ main(int argc, char *argv[]) {
         // Write socket output to stdout
         for (ssize_t i = 0; i < n; i++) {
           handle_echo(c[i]);
+        }
+
+        if (logfd) {
+          char numbytes[21];
+          int numbytes_size = sprintf(numbytes, "%zd", n);
+          if (n > 0) {
+            write(logfd, "RECEIVED ", 9);
+            write(logfd, numbytes, numbytes_size);
+            write(logfd, " bytes: ", 8);
+            write(logfd, c, n);
+            write(logfd, "\n", 1);
+          }
         }
       }
 

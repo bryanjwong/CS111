@@ -194,7 +194,6 @@ main(int argc, char *argv[]) {
           }
           // Write input to shell
           for (ssize_t i = 0; i < n; i++) {
-            handle_echo(c[i]);
             switch(c[i]) {
               case '\003':
                 if (kill(cpid, SIGINT) < 0)
@@ -228,12 +227,9 @@ main(int argc, char *argv[]) {
             handle_exit();
           }
           // Write shell output to socket
-          for (int i = 0; i < n; i++) {
-            write(1, c+i, 1);
-            if (write(newsockfd, c+i, 1) < 0) {
-              fprintf(stderr, "Write to socket failed: %s\r\n", strerror(errno));
-              exit(1);
-            }
+          if (write(newsockfd, c, n) < 0) {
+            fprintf(stderr, "Write to socket failed: %s\r\n", strerror(errno));
+            exit(1);
           }
         }
 
@@ -267,7 +263,7 @@ main(int argc, char *argv[]) {
       }
       // Echo input to stdout
       for (ssize_t i = 0; i < n; i++) {
-        handle_echo(c[i]);
+        write(newsockfd, c+i, 1);
 
         // TODO: RESOLVE THIS
         if(c[i] == '\003' || c[i] == '\004')
