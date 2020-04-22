@@ -24,37 +24,19 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "zlib.h"
 
-// Handle output to monitor
-void
-handle_echo(char c) {
-  int n;
-  if (c == '\003') {
-    n = write(1, "^C\r\n", 4);
-  }
-  if (c == '\004') {
-    n = write(1, "^D\r\n", 2);
-  }
-  else if ((c == '\r') || (c == '\n')) {
-    n = write(1, "\r", 1);
-    n = write(1, "\n", 1);
-  }
-  else {
-    n = write(1, &c, 1);
-  }
-  if (n < 0) {
-    fprintf(stderr, "Write to file descriptor 1 failed: %s\n", strerror(errno));
-    exit(3);
-  }
-}
+z_stream sendstream, receivestream;
 
-// Handle exiting program in one of 3 cases: closing pipe from keyboard reader,
-//  receiving a SIGPIPE from keyboard reader, receiving an EOF from shell reader
+// Handle exiting program in one of 3 cases: closing pipe from client,
+//  receiving a SIGPIPE from client, receiving an EOF from shell reader
 void
 handle_exit() {
   int wstatus;
   wait(&wstatus);
   fprintf(stderr, "SHELL EXIT SIGNAL=%d STATUS=%d\r\n", (wstatus & 0x007f), ((wstatus & 0xff00) >> 8));
+  inflateEnd(&receivestream);
+  deflateEnd(&sendstream);
   exit(0);
 }
 
@@ -65,28 +47,51 @@ main(int argc, char *argv[]) {
   struct option long_options[] = {
     {"shell", required_argument,  0, 's'},
     {"port",  required_argument,  0, 'p'},
+    {"compress", no_argument,     0, 'c'},
     {0, 0, 0, 0}
   };
   int opt_code;
   char * shell = NULL;
   char * port = NULL;
+  char compress_flag = 0;
   while ((opt_code = getopt_long(argc, argv, "", long_options, 0)) != -1) {
-    if (opt_code == 's') {
-      shell = optarg;
-    }
-    else if (opt_code == 'p') {
-      port = optarg;
-    }
-    else {
-      fprintf(stderr, "Usage: ./lab1b-server --port=portnum [--shell=program]\n");
-      exit(1);
+    switch(opt_code) {
+      case 's':
+        shell = optarg;
+        break;
+      case 'p':
+        port = optarg;
+        break;
+      case 'c':
+        compress_flag = 1;
+
+        sendstream.zalloc = Z_NULL;
+        sendstream.zfree = Z_NULL;
+        sendstream.opaque = Z_NULL;
+
+        receivestream.zalloc = Z_NULL;
+        receivestream.zfree = Z_NULL;
+        receivestream.opaque = Z_NULL;
+
+        if (inflateInit(&receivestream) != Z_OK) {
+          fprintf(stderr, "Error while calling inflateInit\n");
+          exit(1);
+        }
+        if (deflateInit(&sendstream, Z_DEFAULT_COMPRESSION) != Z_OK) {
+          fprintf(stderr, "Error while calling deflateInit\n");
+          exit(1);
+        }
+        break;
+      default:
+        fprintf(stderr, "Usage: ./lab1b-server --port=portnum [--shell=program] [--compress]\n");
+        exit(1);
     }
   }
 
   // Check that mandatory port option is specified
   if(!port) {
     fprintf(stderr, "Error, no --port argument specified\n");
-    fprintf(stderr, "Usage: ./lab1b-server --port=portnum [--shell=program]\n");
+    fprintf(stderr, "Usage: ./lab1b-server --port=portnum [--shell=program] [--compress]\n");
     exit(1);
   }
 
@@ -188,13 +193,28 @@ main(int argc, char *argv[]) {
           if (n < 0) {
             fprintf(stderr, "Read from socket failed: %s\r\n", strerror(errno));
             close(termtoshell_fd[1]);
+            handle_exit();
           }
           if (n == 0) {
             close(termtoshell_fd[1]);
           }
+
+          char decompressed[1024];
+          if (compress_flag) {
+            receivestream.avail_in = (uInt) n;
+            receivestream.next_in = (Bytef *) c;
+            receivestream.avail_out = (uInt) sizeof(decompressed);
+            receivestream.next_out = (Bytef *) decompressed;
+
+            while(receivestream.avail_in > 0)
+              inflate(&receivestream, Z_SYNC_FLUSH);
+            n = sizeof(decompressed) - receivestream.avail_out;
+          }
+
           // Write input to shell
           for (ssize_t i = 0; i < n; i++) {
-            switch(c[i]) {
+            char h = compress_flag ? decompressed[i] : c[i];
+            switch(h) {
               case '\003':
                 if (kill(cpid, SIGINT) < 0)
                   fprintf(stderr, "Killing child process failed: %s\r\n", strerror(errno));
@@ -202,11 +222,8 @@ main(int argc, char *argv[]) {
               case '\004':
                 close(termtoshell_fd[1]);
                 break;
-              case '\r':
-                write(termtoshell_fd[1], "\n", 1);
-                break;
               default:
-                write(termtoshell_fd[1], c+i, 1);
+                write(termtoshell_fd[1], &h, 1);
                 break;
             }
           }
@@ -223,14 +240,24 @@ main(int argc, char *argv[]) {
           // EOF Reached
           if (n == 0) {
             close(shelltoterm_fd[0]);
-            write(1, "EOF\n", 4);
             handle_exit();
           }
-          // Write shell output to socket
-          if (write(newsockfd, c, n) < 0) {
-            fprintf(stderr, "Write to socket failed: %s\r\n", strerror(errno));
-            exit(1);
+          char compressed[256];
+          if (compress_flag) {
+            sendstream.avail_in = (uInt) n;
+            sendstream.next_in = (Bytef *) c;
+            sendstream.avail_out = (uInt) sizeof(compressed);
+            sendstream.next_out = (Bytef *) compressed;
+
+            while(sendstream.avail_in > 0)
+              deflate(&sendstream, Z_SYNC_FLUSH);
+            n = sizeof(compressed) - sendstream.avail_out;
+            write(newsockfd, compressed, n);
           }
+          else {
+            write(newsockfd, c, n);
+          }
+
         }
 
         if (fds[1].revents & POLLHUP) {
@@ -238,15 +265,15 @@ main(int argc, char *argv[]) {
         }
         if (fds[0].revents & POLLHUP) {
           fprintf(stderr, "Hang up from client: %s\r\n", strerror(errno));
-          exit(1);
+          handle_exit();
         }
         if (fds[0].revents & POLLERR) {
           fprintf(stderr, "Error from client: %s\r\n", strerror(errno));
-          exit(1);
+          handle_exit();
         }
         if (fds[1].revents & POLLERR) {
           fprintf(stderr, "Error from shell: %s\r\n", strerror(errno));
-          exit(1);
+          handle_exit();
         }
       }
     }
@@ -261,15 +288,28 @@ main(int argc, char *argv[]) {
         fprintf(stderr, "Read from socket failed: %s\n", strerror(errno));
         exit(1);
       }
-      // Echo input to stdout
-      for (ssize_t i = 0; i < n; i++) {
-        write(newsockfd, c+i, 1);
+      write(newsockfd, c, n);
 
-        // TODO: RESOLVE THIS
-        if(c[i] == '\003' || c[i] == '\004')
+      char decompressed[1024];
+      ssize_t decompress_size;
+      if (compress_flag) {
+        receivestream.avail_in = (uInt) n;
+        receivestream.next_in = (Bytef *) c;
+        receivestream.avail_out = (uInt) sizeof(decompressed);
+        receivestream.next_out = (Bytef *) decompressed;
+
+        while(receivestream.avail_in > 0)
+          inflate(&receivestream, Z_SYNC_FLUSH);
+        decompress_size = sizeof(decompressed) - receivestream.avail_out;
+      }
+      // Echo input to stdout
+      for (ssize_t i = 0; i < ((compress_flag) ? decompress_size : n); i++) {
+        char h = compress_flag ? decompressed[i] : c[i];
+        if(h == '\003' || h == '\004')
           exit(0);
       }
     }
+    inflateEnd(&receivestream);
   }
   exit(0);
 }

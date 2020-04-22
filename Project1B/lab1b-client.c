@@ -28,12 +28,16 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include "zlib.h"
 
 struct termios initial_termios_p;
+z_stream sendstream, receivestream;
 
 // Reset terminal settings on exit
 void
 reset_terminal(void) {
+  inflateEnd(&receivestream);
+  deflateEnd(&sendstream);
   if(tcsetattr(0, TCSANOW, &initial_termios_p) == -1) {
     exit(1);
   }
@@ -91,34 +95,58 @@ main(int argc, char *argv[]) {
   struct option long_options[] = {
     {"port",  required_argument,  0, 'p'},
     {"log",   required_argument,  0, 'l'},
+    {"compress", no_argument,     0, 'c'},
     {0, 0, 0, 0}
   };
   int opt_code;
   char * port = NULL;
   char * logfile = NULL;
+  char compress_flag = 0;
   int logfd = 0;
   while ((opt_code = getopt_long(argc, argv, "", long_options, 0)) != -1) {
-    if (opt_code == 'p') {
-      port = optarg;
-    }
-    else if (opt_code == 'l') {
-      logfile = optarg;
-    }
-    else {
-      fprintf(stderr, "Usage: ./lab1b-client --port=portnum [--log=filename]\n");
-      exit(1);
+    switch(opt_code) {
+      case 'p':
+        port = optarg;
+        break;
+      case 'l':
+        logfile = optarg;
+        break;
+      case 'c':
+        compress_flag = 1;
+
+        sendstream.zalloc = Z_NULL;
+        sendstream.zfree = Z_NULL;
+        sendstream.opaque = Z_NULL;
+
+        receivestream.zalloc = Z_NULL;
+        receivestream.zfree = Z_NULL;
+        receivestream.opaque = Z_NULL;
+
+        if (deflateInit(&sendstream, Z_DEFAULT_COMPRESSION) != Z_OK) {
+          fprintf(stderr, "Error while calling deflateInit\n");
+          exit(1);
+        }
+        if (inflateInit(&receivestream) != Z_OK) {
+          fprintf(stderr, "Error while calling inflateInit\n");
+          exit(1);
+        }
+        break;
+      default:
+        fprintf(stderr, "Usage: ./lab1b-client --port=portnum [--log=filename] [--compress]\n");
+        exit(1);
     }
   }
 
   // Check that mandatory port option is specified
   if (!port) {
     fprintf(stderr, "Error, no --port argument specified\n");
-    fprintf(stderr, "Usage: ./lab1b-client --port=portnum [--log=filename]\n");
+    fprintf(stderr, "Usage: ./lab1b-client --port=portnum [--log=filename] [--compress]\n");
     exit(1);
   }
 
   if (logfile) {
-    logfd = creat(logfile, 0666);
+    // Create file if it doesnt exist and append
+    logfd = open(logfile, O_WRONLY | O_APPEND | O_CREAT);
     if (logfd < 0) {
       fprintf(stderr, "Error with logfile, could not creat %s: %s\n", logfile, strerror(errno));
       exit(1);
@@ -182,45 +210,56 @@ main(int argc, char *argv[]) {
           exit(1);
         }
 
-        if (logfd) {
-          char numbytes[21];
-          int numbytes_size = sprintf(numbytes, "%zd", n);
-          if (numbytes_size > 0) {
-            if (write(logfd, "SENT ", 5) < 0) {
-              fprintf(stderr, "Write to log file failed: %s\r\n", strerror(errno));
-              exit(1);
-            }
-            write(logfd, numbytes, numbytes_size);
-            write(logfd, " bytes: ", 8);
-          }
-        }
         // Write input to socket
         for (ssize_t i = 0; i < n; i++) {
           handle_echo(c[i]);
-          n = write(sockfd, c+i, 1);
-          if (n < 0) {
-            fprintf(stderr, "Write to socket failed: %s\r\n", strerror(errno));
+          if (c[i] == '\r')
+            c[i] = '\n';
+        }
+
+        char compressed[256];
+        if (compress_flag) {
+          sendstream.avail_in = (uInt) n;
+          sendstream.next_in = (Bytef *) c;
+          sendstream.avail_out = (uInt) sizeof(compressed);
+          sendstream.next_out = (Bytef *) compressed;
+
+          while(sendstream.avail_in > 0)
+            deflate(&sendstream, Z_SYNC_FLUSH);
+          n = sizeof(compressed) - sendstream.avail_out;
+          write(sockfd, compressed, n);
+        }
+        else {
+          write(sockfd, c, n);
+        }
+
+        if (logfd && n > 0) {
+          char numbytes[21];
+          int numbytes_size = sprintf(numbytes, "%zd", n);
+
+          if (write(logfd, "SENT ", 5) < 0) {
+            fprintf(stderr, "Write to log file failed: %s\r\n", strerror(errno));
             exit(1);
           }
-
-          if (logfd) {
-            switch(c[i]) {
-              case '\003':
-                write(logfd, "^C", 2);
-                break;
-              case '\004':
-                write(logfd, "^D", 2);
-                break;
-              case '\r':
-                write(logfd, "\n", 1);
-                break;
-              default:
-                write(logfd, c+i, 1);
-                break;
+          write(logfd, numbytes, numbytes_size);
+          write(logfd, " bytes: ", 8);
+          if (compress_flag)
+            write(logfd, compressed, n);
+          else {
+            for (ssize_t i = 0; i < n; i++) {
+              switch(c[i]) {
+                case '\003':
+                  write(logfd, "^C", 2);
+                  break;
+                case '\004':
+                  write(logfd, "^D", 2);
+                  break;
+                default:
+                  write(logfd, c+i, 1);
+                  break;
+              }
             }
           }
-        }
-        if (logfd) {
           write(logfd, "\n", 1);
         }
       }
@@ -233,11 +272,6 @@ main(int argc, char *argv[]) {
           fprintf(stderr, "Read from socket input failed: %s\r\n", strerror(errno));
           exit(2);
         }
-        // Write socket output to stdout
-        for (ssize_t i = 0; i < n; i++) {
-          handle_echo(c[i]);
-        }
-
         if (logfd) {
           char numbytes[21];
           int numbytes_size = sprintf(numbytes, "%zd", n);
@@ -249,10 +283,27 @@ main(int argc, char *argv[]) {
             write(logfd, "\n", 1);
           }
         }
+
+        char decompressed[1024];
+        if (compress_flag) {
+          receivestream.avail_in = (uInt) n;
+          receivestream.next_in = (Bytef *) c;
+          receivestream.avail_out = (uInt) sizeof(decompressed);
+          receivestream.next_out = (Bytef *) decompressed;
+
+          while(receivestream.avail_in > 0)
+            inflate(&receivestream, Z_SYNC_FLUSH);
+          n = sizeof(decompressed) - receivestream.avail_out;
+        }
+
+        // Write socket output to stdout
+        for (ssize_t i = 0; i < n; i++) {
+          char h = compress_flag ? decompressed[i] : c[i];
+          handle_echo(h);
+        }
       }
 
       if (fds[1].revents & POLLHUP) {
-        fprintf(stderr, "Hang up from socket: %s\r\n", strerror(errno));
         exit(0);
       }
       if (fds[0].revents & POLLHUP) {
