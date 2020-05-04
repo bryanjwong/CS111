@@ -17,6 +17,7 @@
 long long counter = 0;
 int opt_yield;
 pthread_mutex_t mutexcount;
+char spinlock = 0;
 void (*addfunc_ptr) (long long *, long long);
 
 /* Add function as given by spec */
@@ -35,6 +36,28 @@ void add_m(long long *pointer, long long value) {
     sched_yield();
   *pointer = sum;
   pthread_mutex_unlock(&mutexcount);
+}
+
+/* Add function with spin lock */
+void add_s(long long *pointer, long long value) {
+  while(__sync_lock_test_and_set(&spinlock, 1) == 1);
+  long long sum = *pointer + value;
+  if (opt_yield)
+    sched_yield();
+  *pointer = sum;
+  __sync_lock_release(&spinlock);
+}
+
+/* Add function with atomic compare and swap */
+void add_c(long long *pointer, long long value) {
+  long long initial_val;
+  long long sum;
+  do {
+    initial_val = *pointer;
+    sum = initial_val + value;
+    if (opt_yield)
+      sched_yield();
+  } while(__sync_val_compare_and_swap(pointer, initial_val, sum) != initial_val);
 }
 
 /* Increment, then decrement for a specified number of times */
@@ -99,12 +122,17 @@ int main(int argc, char *argv[]) {
         sync = *optarg;
         switch (sync) {
           case 'm':
-            pthread_mutex_init(&mutexcount, NULL);
+            if (pthread_mutex_init(&mutexcount, NULL) != 0) {
+              fprintf(stderr, "Unable to create mutex.\n");
+              exit(1);
+            }
             addfunc_ptr = &add_m;
             break;
           case 's':
+            addfunc_ptr = &add_s;
             break;
           case 'c':
+            addfunc_ptr = &add_c;
             break;
           default:
             fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
@@ -168,17 +196,11 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  // Perform exit operations
-  switch (sync) {
-    case 'm':
+  /* Perform exit operations */
+  if (sync == 'm')
       pthread_mutex_destroy(&mutexcount);
-      break;
-    case 's':
-      break;
-    case 'c':
-      break;
-  }
 
+  /* Print CSV Output */
   long long s_elapsed = (long long) ts_new.tv_sec - ts_old.tv_sec;
   long long ns_elapsed = s_elapsed * 1000000000 + (ts_new.tv_nsec - ts_old.tv_nsec);
   long noperations = nthreads * niterations * 2;
