@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <sched.h>
 #include <getopt.h>
 #include <errno.h>
 #include <string.h>
@@ -114,7 +115,7 @@ int main(int argc, char *argv[]) {
         opt_yield = 1;
         break;
       case 's':
-        if (strlen(optarg) > 1) {
+        if (strlen(optarg) != 1) {
           fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
           fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#]\n");
           exit(1);
@@ -139,10 +140,9 @@ int main(int argc, char *argv[]) {
             fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#]\n");
             exit(1);
         }
-
         break;
       default:
-        fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#]\n");
+        fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#] [--yield] [--sync=m/s/c]\n");
         exit(1);
     }
   }

@@ -1,0 +1,78 @@
+NAME: Bryan Wong
+EMAIL: bryanjwong@g.ucla.edu
+ID: 805111517
+
+QUESTION 2.1.1 - causing conflicts:
+===================================
+Why does it take many iterations before errors are seen?
+Why does a significantly smaller number of iterations so seldom fail?
+
+  When multiple threads are created, each thread is scheduled into its own time
+  slice where it performs its given subroutine. When that time is up, a context
+  switch interrupts the previously running thread and switches to a new one.
+  Errors in lab2_add are caused by these context switches happening at critical
+  sections.
+
+  With a small number of iterations, each thread is able to perform the entire
+  increment-decrement operation within its time slice, and is never interrupted
+  at a critical section. With many iterations, however, it is possible that
+  a context switch will happen after the counter is retrieved but before the
+  counter is updated. This will cause an error in the value of the counter. In
+  addition, the law of large numbers means that there are more operations, and
+  thus more opportunities for an error to occur.
+
+  With a small number of iterations, it is more likely that the entire
+  increment-decrement operation will fit in one time slice. Since there are
+  less total operations to perform, there are also less opportunities for an
+  error to occur.
+
+QUESTION 2.1.2 - cost of yielding:
+==================================
+Why are the --yield runs so much slower?
+Where is the additional time going?
+Is it possible to get valid per-operation timings if we are using the --yield option?
+If so, explain how. If not, explain why not.
+
+  The --yield runs are much slower because there is an attached overhead
+  involved in having each thread yield. In situations where there are multiple iterations, this can add up significantly since this must be taken into
+  account during each iteration. This additional time goes towards operations
+  such as saving registers and stacks for each thread and performing the context
+  switch.
+
+  It would be possible to get valid per-operation timings, but it would require
+  a great deal of timekeeping overhead. The elapsed time could "pause" before
+  the context switch and "resume" afterwards inside each thread. By keeping a
+  cumulative total time sum for all threads, we can estimate the per-operation
+  timing without taking the yield overhead into account. In addition, the
+  current implementation starts recording time before each thread is created.
+  For a more accurate per-operation implementation, time could be started
+  individually for each thread in its routine.
+
+QUESTION 2.1.3 - measurement errors:
+====================================
+Why does the average cost per operation drop with increasing iterations?
+If the cost per iteration is a function of the number of iterations, how do we
+know how many iterations to run (or what the "correct" cost is)?
+
+  The average cost per operation drops with increasing iterations because the
+  overhead of thread creation and initial cache misses is amortized over a large
+  number of iterations.
+
+  The reduction in cost per operation by increasing iterations seems to have
+  diminishing returns and seems to represent exponential decay. At a certain
+  point, this function will trend toward some asymptotic value where increasing
+  the number of iterations will have minimal benefit, which is the "correct"
+  cost.
+
+QUESTION 2.1.4 - costs of serialization:
+========================================
+Why do all of the options perform similarly for low numbers of threads?
+Why do the three protected operations slow down as the number of threads rises?
+
+  For low numbers of threads, there is a less likely chance for any given thread
+  to be waiting for another thread to finish. As the number of threads increases,
+  there are more possibilities for any given thread to be waiting on another
+  thread to give up the lock. This increases the overall time to complete the
+  operation, slowing the process down.
+
+Included Files:

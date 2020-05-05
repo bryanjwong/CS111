@@ -4,11 +4,12 @@
 
 default:
 	@gcc -Wall -Wextra -pthread lab2_add.c -o lab2_add
+	@gcc -Wall -Wextra -pthread SortedList.c lab2_list.c -o lab2_list
 
 .PHONY: clean tests dist
 
 clean:
-	@-rm lab2_add 2>/dev/null || true
+	@-rm lab2_add lab2_list 2>/dev/null || true
 
 tests: default
 	rm -f lab2_add.csv lab2_list.csv
@@ -334,10 +335,15 @@ tests: default
 	./lab2_add --threads=12 --iterations=10000 --sync=c --yield >> lab2_add.csv
 	./lab2_add --threads=12 --iterations=100000 --sync=c --yield >> lab2_add.csv
 
+	./lab2_list --threads=1 --iterations=10 >> lab2_list.csv
+	./lab2_list --threads=1 --iterations=100 >> lab2_list.csv
+	./lab2_list --threads=1 --iterations=1000 >> lab2_list.csv
+	./lab2_list --threads=1 --iterations=10000 >> lab2_list.csv
+	./lab2_list --threads=1 --iterations=20000 >> lab2_list.csv
+
 graphs: tests
 	./lab2_add.gp
 	./lab2_list.gp
-
 
 dist:
 	tar -czvf lab2a-805111517.tar.gz Makefile README lab2_add.c
