@@ -18,6 +18,10 @@
 
 #define KEY_SIZE 64
 
+char opt_sync = 0;
+char spinlock = 0;
+pthread_mutex_t mutexlist;
+
 /* Struct used to pass data to thread routine */
 typedef struct t_data {
   long tid;
@@ -28,6 +32,11 @@ typedef struct t_data {
 
 void *list_test(void *t) {
   t_data *data = (t_data *)t;
+  if (opt_sync == 'm')
+    pthread_mutex_lock(&mutexlist);
+  if (opt_sync == 's')
+    while(__sync_lock_test_and_set(&spinlock, 1) == 1);
+
   for (long i = 0; i < data->niterations; i++) {
     long index = data->tid * data->niterations + i;
     // fprintf(stdout, "KEY #%ld: %s (Thread %ld)\n", index, data->elements[index].key, data->tid);
@@ -52,6 +61,10 @@ void *list_test(void *t) {
       exit(2);
     }
   }
+  if (opt_sync == 'm')
+    pthread_mutex_unlock(&mutexlist);
+  if (opt_sync == 's')
+    __sync_lock_release(&spinlock);
   pthread_exit(NULL);
 }
 
@@ -66,12 +79,13 @@ int main(int argc, char *argv[]) {
     {"threads",     optional_argument,  0,  't'},
     {"iterations",  optional_argument,  0,  'i'},
     {"yield",       required_argument,  0,  'y'},
+    {"sync",        required_argument,  0,  's'},
     {0, 0, 0, 0}
   };
   long nthreads = 1;
   long niterations = 1;
-  int opt_code;
   char yield_flag = 0;
+  int opt_code;
   while ((opt_code = getopt_long(argc, argv, "", long_options, 0)) != -1) {
     switch (opt_code) {
       case 't':
@@ -117,8 +131,30 @@ int main(int argc, char *argv[]) {
           }
         }
         break;
+      case 's':
+        if (strlen(optarg) != 1) {
+          fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
+          fprintf(stderr, "Usage: ./lab2_list [--threads=#] [--iterations=#] [--yield=idl] [--sync=m/s]\n");
+          exit(1);
+        }
+        opt_sync = *optarg;
+        switch (opt_sync) {
+          case 'm':
+            if (pthread_mutex_init(&mutexlist, NULL) != 0) {
+              fprintf(stderr, "Unable to create mutex.\n");
+              exit(1);
+            }
+            break;
+          case 's':
+            break;
+          default:
+            fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
+            fprintf(stderr, "Usage: ./lab2_list [--threads=#] [--iterations=#] [--yield=idl] [--sync=m/s]\n");
+            exit(1);
+        }
+        break;
       default:
-        fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#] [--yield=idl]\n");
+        fprintf(stderr, "Usage: ./lab2_list [--threads=#] [--iterations=#] [--yield=idl] [--sync=m/s]\n");
         exit(1);
     }
   }
@@ -240,13 +276,19 @@ int main(int argc, char *argv[]) {
     }
     yieldopts[index] = '\0';
   }
-  char *syncopts = "none";
 
-  fprintf(stdout, "list-%s-%s,", yieldopts, syncopts);
+  fprintf(stdout, "list-%s-", yieldopts);
+  if(opt_sync) {
+    fprintf(stdout, "%c,", opt_sync);
+  } else {
+    fprintf(stdout, "%s,", "none");
+  }
   fprintf(stdout, "%ld,%ld,1,%ld,%lld,%lld\n", nthreads, niterations,
           noperations, ns_elapsed, ns_elapsed/noperations);
 
   /* Free dynamically allocated variables */
+  if (opt_sync == 'm')
+      pthread_mutex_destroy(&mutexlist);
   for (int i = 0; i < nelements; i++) {
     free(keys[i]);
   }

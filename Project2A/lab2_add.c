@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
       case 's':
         if (strlen(optarg) != 1) {
           fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
-          fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#]\n");
+          fprintf(stderr, "Usage: ./lab2_add [--threads=#] [--iterations=#]\n");
           exit(1);
         }
         sync = *optarg;
@@ -137,12 +137,12 @@ int main(int argc, char *argv[]) {
             break;
           default:
             fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
-            fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#]\n");
+            fprintf(stderr, "Usage: ./lab2_add [--threads=#] [--iterations=#]\n");
             exit(1);
         }
         break;
       default:
-        fprintf(stderr, "Usage: ./lab2a_add [--threads=#] [--iterations=#] [--yield] [--sync=m/s/c]\n");
+        fprintf(stderr, "Usage: ./lab2_add [--threads=#] [--iterations=#] [--yield] [--sync=m/s/c]\n");
         exit(1);
     }
   }
