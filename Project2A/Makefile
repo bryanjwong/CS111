@@ -9,7 +9,7 @@ default:
 .PHONY: clean tests graphs dist
 
 clean:
-	@-rm lab2_add lab2_list 2>/dev/null || true
+	@-rm lab2_add lab2_list lab2a-805111517.tar.gz 2>/dev/null || true
 
 tests: default
 	rm -f lab2_add.csv lab2_list.csv
@@ -559,7 +559,7 @@ graphs: tests
 	./lab2_add.gp
 	./lab2_list.gp
 
-dist:
+dist: graphs
 	tar -czvf lab2a-805111517.tar.gz Makefile README lab2_add.c lab2_list.c \
 	SortedList.h SortedList.c lab2_add.gp lab2_list.gp lab2_add.csv \
 	lab2_list.csv lab2_add-1.png lab2_add-2.png lab2_add-3.png lab2_add-4.png \
