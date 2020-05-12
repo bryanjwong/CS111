@@ -32,22 +32,39 @@ typedef struct t_data {
 
 void *list_test(void *t) {
   t_data *data = (t_data *)t;
+  for (long i = 0; i < data->niterations; i++) {
+    if (opt_sync == 'm')
+      pthread_mutex_lock(&mutexlist);
+    if (opt_sync == 's')
+      while(__sync_lock_test_and_set(&spinlock, 1) == 1);
+    long index = data->tid * data->niterations + i;
+    // fprintf(stdout, "KEY #%ld: %s (Thread %ld)\n", index, data->elements[index].key, data->tid);
+    SortedList_insert(data->head, &(data->elements[index]));
+    if (opt_sync == 'm')
+      pthread_mutex_unlock(&mutexlist);
+    if (opt_sync == 's')
+      __sync_lock_release(&spinlock);
+  }
+
   if (opt_sync == 'm')
     pthread_mutex_lock(&mutexlist);
   if (opt_sync == 's')
     while(__sync_lock_test_and_set(&spinlock, 1) == 1);
-
-  for (long i = 0; i < data->niterations; i++) {
-    long index = data->tid * data->niterations + i;
-    // fprintf(stdout, "KEY #%ld: %s (Thread %ld)\n", index, data->elements[index].key, data->tid);
-    SortedList_insert(data->head, &(data->elements[index]));
-  }
   int length = SortedList_length(data->head);
   if (length == -1) {
     fprintf(stderr, "Synchronization error detected: list length could not be found\n");
     exit(2);
   }
+  if (opt_sync == 'm')
+    pthread_mutex_unlock(&mutexlist);
+  if (opt_sync == 's')
+    __sync_lock_release(&spinlock);
+  
   for (long i = 0; i < data->niterations; i++) {
+    if (opt_sync == 'm')
+      pthread_mutex_lock(&mutexlist);
+    if (opt_sync == 's')
+      while(__sync_lock_test_and_set(&spinlock, 1) == 1);
     long index = data->tid * data->niterations + i;
     SortedListElement_t *del = SortedList_lookup(data->head, data->elements[index].key);
     if (del) {
@@ -60,11 +77,12 @@ void *list_test(void *t) {
       fprintf(stderr, "Synchronization error detected: inserted keys cannot be found\n");
       exit(2);
     }
+    if (opt_sync == 'm')
+      pthread_mutex_unlock(&mutexlist);
+    if (opt_sync == 's')
+      __sync_lock_release(&spinlock);
   }
-  if (opt_sync == 'm')
-    pthread_mutex_unlock(&mutexlist);
-  if (opt_sync == 's')
-    __sync_lock_release(&spinlock);
+  
   pthread_exit(NULL);
 }
 

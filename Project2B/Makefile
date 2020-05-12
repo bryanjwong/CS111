@@ -3,7 +3,7 @@
 # ID: 805111517
 
 default:
-	@gcc -Wall -Wextra -pthread SortedList.c lab2_list.c -o lab2_list
+	@gcc -Wall -Wextra -pthread -lprofiler SortedList.c lab2_list.c -o lab2_list
 
 .PHONY: clean tests graphs dist
 

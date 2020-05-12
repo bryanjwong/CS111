@@ -32,14 +32,14 @@ set terminal png
 set datafile separator ","
 
 # how many threads/iterations we can run without failure (w/o yielding)
-set title "List-1: Operations per Second vs Number of Threads"
+set title "List-1: Throughput vs Number of Threads on Synchronized Lists"
 set xlabel "Threads"
 set logscale x 2
-set ylabel "Operations per Second"
+set ylabel "Throughput (Operations per Second)"
 set logscale y 10
 set output 'lab2b_1.png'
-
-    "< grep 'list-none-m,[0-9]*,1000' lab2_list.csv" using ($2):(1000000000/($7)) \
+plot \
+    "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):(1000000000/($7)) \
 	title 'Mutex' with linespoints lc rgb 'red', \
-    "< grep 'list-none-m,[0-9]*,1000' lab2_list.csv" using ($2):(1000000000/($7)) \
-  title 'Spin-lock' with linespoints lc rgb 'green', \
+    "< grep -e 'list-none-s,[0-9]*,1000' lab2b_list.csv" using ($2):(1000000000/($7)) \
+       title 'Spin-lock' with linespoints lc rgb 'green'
