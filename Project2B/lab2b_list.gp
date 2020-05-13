@@ -39,9 +39,9 @@ set ylabel "Throughput (Operations per Second)"
 set logscale y 10
 set output 'lab2b_1.png'
 plot \
-    "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    "< grep -e 'list-none-m,[0-9]*,1000,1,' lab2b_list.csv" using ($2):(1000000000/($7)) \
 	title 'Mutex' with linespoints lc rgb 'red', \
-    "< grep -e 'list-none-s,[0-9]*,1000' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    "< grep -e 'list-none-s,[0-9]*,1000,1,' lab2b_list.csv" using ($2):(1000000000/($7)) \
        title 'Spin-lock' with linespoints lc rgb 'green'
 
 # lab2b_2.png
@@ -52,9 +52,9 @@ set ylabel "Average Time per Operation (ns)"
 set logscale y 10
 set output 'lab2b_2.png'
 plot \
-   "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):($7) \
+   "< grep -e 'list-none-m,[0-9]*,1000,1,' lab2b_list.csv" using ($2):($7) \
 	title 'Total Completion' with linespoints lc rgb 'red', \
-   "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):($8) \
+   "< grep -e 'list-none-m,[0-9]*,1000,1,' lab2b_list.csv" using ($2):($8) \
       title 'Wait-for-lock' with linespoints lc rgb 'green'
 
 # lab2b_3.png
