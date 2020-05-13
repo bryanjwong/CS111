@@ -322,16 +322,11 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Dynamic allocation of threads failed: %s\n", strerror(errno));
     exit(1);
   }
-  pthread_attr_t attr;
   int rc;
   struct timespec ts_old;
   struct timespec ts_new;
   void * return_val = NULL;
   long long lock_time = 0;
-
-  /* Explicitly state threads are joinable */
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
   /* Handle segfault signal catcher */
   if(signal(SIGSEGV, handleseg) == SIG_ERR) {
@@ -351,7 +346,7 @@ int main(int argc, char *argv[]) {
     data[t].niterations = niterations;
     data[t].elements = elements;
     data[t].heads = heads;
-    rc = pthread_create(&threads[t], &attr, list_test, (void *) &data[t]);
+    rc = pthread_create(&threads[t], NULL, list_test, (void *) &data[t]);
     if (rc) {
       fprintf(stderr, "Error, return code from pthread_create() is %d\n", rc);
       free(threads);
@@ -360,7 +355,6 @@ int main(int argc, char *argv[]) {
   }
 
   /* Join all threads */
-  pthread_attr_destroy(&attr);
   for (long t = 0; t < nthreads; t++) {
     rc = pthread_join(threads[t], &return_val);
     if (rc) {
@@ -427,9 +421,10 @@ int main(int argc, char *argv[]) {
           noperations, ns_elapsed, ns_elapsed/noperations, lock_time/noperations);
 
   /* Free dynamically allocated variables */
-  if (opt_sync == 'm')
+  if (opt_sync == 'm') {
     for(long i = 0; i < nlists; i++)
       pthread_mutex_destroy(&mutexlist[i]);
+  }
   for (int i = 0; i < nelements; i++) {
     free(keys[i]);
   }
@@ -439,5 +434,6 @@ int main(int argc, char *argv[]) {
   free(data);
   free(heads);
   free(mutexlist);
+  free(spinlock);
   return 0;
 }
