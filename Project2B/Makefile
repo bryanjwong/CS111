@@ -3,7 +3,7 @@
 # ID: 805111517
 
 default:
-	@gcc -Wall -Wextra -pthread -lprofiler SortedList.c lab2_list.c -o lab2_list
+	@gcc -Wall -Wextra -pthread -g -lprofiler SortedList.c lab2_list.c -o lab2_list
 
 .PHONY: clean tests graphs dist
 
@@ -31,5 +31,12 @@ tests: default
 
 graphs: tests
 	./lab2b_list.gp
+
+profile: default
+	rm -f ./list.prof profile.out
+	LD_PRELOAD="/usr/lib/libprofiler.so"
+	CPUPROFILE=./list.prof ./lab2_list --iterations=1000 --threads=12 --sync=s
+	pprof --text ./lab2_list ./list.prof > profile.out
+	rm -f ./list.prof
 
 dist: graphs
