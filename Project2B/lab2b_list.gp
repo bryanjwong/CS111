@@ -44,15 +44,64 @@ plot \
     "< grep -e 'list-none-s,[0-9]*,1000' lab2b_list.csv" using ($2):(1000000000/($7)) \
        title 'Spin-lock' with linespoints lc rgb 'green'
 
- # lab2b_2.png
- set title "List-2: Time per Operation vs Number of Threads on Mutex-Synchronized Lists"
- set xlabel "Threads"
- set logscale x 2
- set ylabel "Average Time per Operation (ns)"
- set logscale y 10
- set output 'lab2b_2.png'
- plot \
-     "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):($7) \
- 	title 'Total Completion' with linespoints lc rgb 'red', \
-     "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):($8) \
-        title 'Wait-for-lock' with linespoints lc rgb 'green'
+# lab2b_2.png
+set title "List-2: Time per Operation vs Number of Threads on Mutex-Synchronized Lists"
+set xlabel "Threads"
+set logscale x 2
+set ylabel "Average Time per Operation (ns)"
+set logscale y 10
+set output 'lab2b_2.png'
+plot \
+   "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):($7) \
+	title 'Total Completion' with linespoints lc rgb 'red', \
+   "< grep -e 'list-none-m,[0-9]*,1000' lab2b_list.csv" using ($2):($8) \
+      title 'Wait-for-lock' with linespoints lc rgb 'green'
+
+# lab2b_3.png
+set title "List-3: Threads and Iterations That Run Without Failure"
+set xlabel "Threads"
+set logscale x 2
+set ylabel "Successful Iterations"
+set logscale y 4
+set output 'lab2b_3.png'
+plot \
+    "< grep -e 'list-id-none,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):($3) \
+ title '4 lists, unprotected' with points lc rgb 'green', \
+    "< grep -e 'list-id-m,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):($3) \
+ title '4 lists, mutex-protected' with points lc rgb 'red', \
+    "< grep -e 'list-id-s,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):($3) \
+ title '4 lists, spin-lock-protected' with points lc rgb 'violet'
+
+# lab2b_4.png
+set title "List-4: Throughput vs Number of Threads, Mutex-synchronized List"
+set xlabel "Threads"
+set logscale x 2
+set ylabel "Throughput (Operations per Second)"
+set logscale y 10
+set output 'lab2b_4.png'
+plot \
+  "< grep -e 'list-none-m,[0-9]*,[0-9]*,1' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '1 list' with linespoints lc rgb 'red', \
+  "< grep -e 'list-none-m,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '4 lists' with linespoints lc rgb 'green', \
+  "< grep -e 'list-none-m,[0-9]*,[0-9]*,8' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '8 lists' with linespoints lc rgb 'violet', \
+  "< grep -e 'list-none-m,[0-9]*,[0-9]*,16' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '16 lists' with linespoints lc rgb 'orange'
+
+# lab2b_5.png
+set title "List-5: Throughput vs Number of Threads, Spin-lock-synchronized List"
+set xlabel "Threads"
+set logscale x 2
+set ylabel "Throughput (Operations per Second)"
+set logscale y 10
+set output 'lab2b_5.png'
+plot \
+  "< grep -e 'list-none-s,[0-9]*,[0-9]*,1' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '1 list' with linespoints lc rgb 'red', \
+  "< grep -e 'list-none-s,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '4 lists' with linespoints lc rgb 'green', \
+  "< grep -e 'list-none-s,[0-9]*,[0-9]*,8' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '8 lists' with linespoints lc rgb 'violet', \
+  "< grep -e 'list-none-s,[0-9]*,[0-9]*,16' lab2b_list.csv" using ($2):(1000000000/($7)) \
+    title '16 lists' with linespoints lc rgb 'orange'

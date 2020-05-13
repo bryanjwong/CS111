@@ -19,16 +19,25 @@
 #define KEY_SIZE 64
 
 char opt_sync = 0;
-char spinlock = 0;
-pthread_mutex_t mutexlist;
+char * spinlock = NULL;
+long nlists = 1;
+pthread_mutex_t * mutexlist = NULL;
 
 /* Struct used to pass data to thread routine */
 typedef struct t_data {
   long tid;
   long niterations;
   SortedListElement_t *elements;
-  SortedList_t *head;
+  SortedList_t *heads;
 } t_data;
+
+unsigned long hash(const char * key) {
+  unsigned long hash = 5381;
+  for (int i = 0; i < KEY_SIZE; i++) {
+    hash = ((hash << 5) + hash) + key[i]; /* hash * 33 + key[i] */
+  }
+  return hash % nlists;
+}
 
 void *list_test(void *t) {
   struct timespec timer_start;
@@ -37,6 +46,8 @@ void *list_test(void *t) {
   *thread_time = 0;
   t_data *data = (t_data *)t;
   for (long i = 0; i < data->niterations; i++) {
+    long index = data->tid * data->niterations + i;
+    unsigned long hashed_key = hash(data->elements[index].key);
     if (opt_sync) {
       /* Capture high resolution starting time */
       if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
@@ -45,9 +56,9 @@ void *list_test(void *t) {
       }
     }
     if (opt_sync == 'm')
-      pthread_mutex_lock(&mutexlist);
+      pthread_mutex_lock(&mutexlist[hashed_key]);
     if (opt_sync == 's')
-      while(__sync_lock_test_and_set(&spinlock, 1) == 1);
+      while(__sync_lock_test_and_set(&spinlock[hashed_key], 1) == 1);
     if (opt_sync) {
       /* Capture high resolution finish time */
       if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
@@ -58,57 +69,16 @@ void *list_test(void *t) {
       long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
       (*thread_time) += ns_elapsed;
     }
-    long index = data->tid * data->niterations + i;
-
     // fprintf(stdout, "KEY #%ld: %s (Thread %ld)\n", index, data->elements[index].key, data->tid);
-    SortedList_insert(data->head, &(data->elements[index]));
+    SortedList_insert(&data->heads[hashed_key], &(data->elements[index]));
     if (opt_sync == 'm')
-      pthread_mutex_unlock(&mutexlist);
+      pthread_mutex_unlock(&mutexlist[hashed_key]);
     if (opt_sync == 's')
-      __sync_lock_release(&spinlock);
+      __sync_lock_release(&spinlock[hashed_key]);
   }
 
-  if (opt_sync) {
-    /* Capture high resolution starting time */
-    if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
-      fprintf(stderr, "Pre-operation clock time retrieval failed: %s\n", strerror(errno));
-      exit(1);
-    }
-  }
-  if (opt_sync == 'm')
-    pthread_mutex_lock(&mutexlist);
-  if (opt_sync == 's')
-    while(__sync_lock_test_and_set(&spinlock, 1) == 1);
-  if (opt_sync) {
-    /* Capture high resolution finish time */
-    if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
-      fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
-      exit(1);
-    }
-    long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
-    long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
-    (*thread_time) += ns_elapsed;
-  }
-  int length = SortedList_length(data->head);
-  if (length == -1) {
-    fprintf(stderr, "Synchronization error detected: list length could not be found\n");
-    exit(2);
-  }
-  if (opt_sync == 'm')
-    pthread_mutex_unlock(&mutexlist);
-  if (opt_sync == 's')
-    __sync_lock_release(&spinlock);
-  if (opt_sync) {
-    /* Capture high resolution finish time */
-    if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
-      fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
-      exit(1);
-    }
-    long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
-    long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
-    (*thread_time) += ns_elapsed;
-  }
-  for (long i = 0; i < data->niterations; i++) {
+  int length = 0;
+  for (long i = 0; i < nlists; i++) {
     if (opt_sync) {
       /* Capture high resolution starting time */
       if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
@@ -117,12 +87,56 @@ void *list_test(void *t) {
       }
     }
     if (opt_sync == 'm')
-      pthread_mutex_lock(&mutexlist);
+      pthread_mutex_lock(&mutexlist[i]);
     if (opt_sync == 's')
-      while(__sync_lock_test_and_set(&spinlock, 1) == 1);
-    long index = data->tid * data->niterations + i;
+      while(__sync_lock_test_and_set(&spinlock[i], 1) == 1);
+    if (opt_sync) {
+      /* Capture high resolution finish time */
+      if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
+        fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
+        exit(1);
+      }
+      long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
+      long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
+      (*thread_time) += ns_elapsed;
+    }
+    int rc = SortedList_length(&data->heads[i]);
+    if (rc == -1) {
+      fprintf(stderr, "Synchronization error detected: list length could not be found\n");
+      exit(2);
+    }
+    length += rc;
+    if (opt_sync == 'm')
+      pthread_mutex_unlock(&mutexlist[i]);
+    if (opt_sync == 's')
+      __sync_lock_release(&spinlock[i]);
+    if (opt_sync) {
+      /* Capture high resolution finish time */
+      if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
+        fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
+        exit(1);
+      }
+      long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
+      long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
+      (*thread_time) += ns_elapsed;
+    }
+  }
 
-    SortedListElement_t *del = SortedList_lookup(data->head, data->elements[index].key);
+  for (long i = 0; i < data->niterations; i++) {
+    long index = data->tid * data->niterations + i;
+    unsigned long hashed_key =  hash(data->elements[index].key);
+    if (opt_sync) {
+      /* Capture high resolution starting time */
+      if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
+        fprintf(stderr, "Pre-operation clock time retrieval failed: %s\n", strerror(errno));
+        exit(1);
+      }
+    }
+    if (opt_sync == 'm')
+      pthread_mutex_lock(&mutexlist[hashed_key]);
+    if (opt_sync == 's')
+      while(__sync_lock_test_and_set(&spinlock[hashed_key], 1) == 1);
+    SortedListElement_t *del = SortedList_lookup(&data->heads[hashed_key], data->elements[index].key);
     if (del) {
       if (SortedList_delete(del)) {
         fprintf(stderr, "Synchronization error detected: element deletion failed\n");
@@ -134,9 +148,9 @@ void *list_test(void *t) {
       exit(2);
     }
     if (opt_sync == 'm')
-      pthread_mutex_unlock(&mutexlist);
+      pthread_mutex_unlock(&mutexlist[hashed_key]);
     if (opt_sync == 's')
-      __sync_lock_release(&spinlock);
+      __sync_lock_release(&spinlock[hashed_key]);
   }
   pthread_exit((void *)thread_time);
 }
@@ -153,11 +167,14 @@ int main(int argc, char *argv[]) {
     {"iterations",  optional_argument,  0,  'i'},
     {"yield",       required_argument,  0,  'y'},
     {"sync",        required_argument,  0,  's'},
+    {"lists",       required_argument,  0,  'l'},
     {0, 0, 0, 0}
   };
   long nthreads = 1;
   long niterations = 1;
   char yield_flag = 0;
+  char mutex_flag = 0;
+  char spinlock_flag = 0;
   int opt_code;
   while ((opt_code = getopt_long(argc, argv, "", long_options, 0)) != -1) {
     switch (opt_code) {
@@ -213,12 +230,10 @@ int main(int argc, char *argv[]) {
         opt_sync = *optarg;
         switch (opt_sync) {
           case 'm':
-            if (pthread_mutex_init(&mutexlist, NULL) != 0) {
-              fprintf(stderr, "Unable to create mutex.\n");
-              exit(1);
-            }
+            mutex_flag = 1;
             break;
           case 's':
+            spinlock_flag = 1;
             break;
           default:
             fprintf(stderr, "Invalid --sync argument: %s\n", optarg);
@@ -226,9 +241,40 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
         break;
+      case 'l':
+        if (optarg) {
+          int lists = atoi(optarg);
+          if (lists > 0) {
+            nlists = lists;
+          } else {
+            fprintf(stderr, "Invalid number of lists: %d\n", lists);
+            exit(1);
+          }
+        }
+        break;
       default:
         fprintf(stderr, "Usage: ./lab2_list [--threads=#] [--iterations=#] [--yield=idl] [--sync=m/s]\n");
         exit(1);
+    }
+  }
+  if (mutex_flag) {
+    mutexlist = malloc(sizeof(pthread_mutex_t) * nlists);
+    if (mutexlist == NULL) {
+      fprintf(stderr, "Dynamic allocation of mutexes failed: %s\n", strerror(errno));
+      exit(1);
+    }
+    for (long i = 0; i < nlists; i++) {
+      if (pthread_mutex_init(&mutexlist[i], NULL) != 0) {
+        fprintf(stderr, "Unable to create mutex.\n");
+        exit(1);
+      }
+    }
+  }
+  if (spinlock_flag) {
+    spinlock = calloc(nlists, sizeof(char));
+    if (spinlock == NULL) {
+      fprintf(stderr, "Dynamic allocation of spinlocks failed: %s\n", strerror(errno));
+      exit(1);
     }
   }
 
@@ -260,10 +306,16 @@ int main(int argc, char *argv[]) {
   }
 
   /* Initialize an empty list */
-  SortedList_t head;
-  head.next = &head;
-  head.prev = &head;
-  head.key = NULL;
+  SortedList_t * heads = malloc(sizeof(SortedList_t) * nlists);
+  if (heads == NULL) {
+    fprintf(stderr, "Dynamic allocation of threads failed: %s\n", strerror(errno));
+    exit(1);
+  }
+  for (long i = 0; i < nlists; i++) {
+    heads[i].next = &heads[i];
+    heads[i].prev = &heads[i];
+    heads[i].key = NULL;
+  }
 
   pthread_t * threads = malloc(sizeof(pthread_t) * nthreads);
   if (threads == NULL) {
@@ -298,7 +350,7 @@ int main(int argc, char *argv[]) {
     data[t].tid = t;
     data[t].niterations = niterations;
     data[t].elements = elements;
-    data[t].head = &head;
+    data[t].heads = heads;
     rc = pthread_create(&threads[t], &attr, list_test, (void *) &data[t]);
     if (rc) {
       fprintf(stderr, "Error, return code from pthread_create() is %d\n", rc);
@@ -328,7 +380,15 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  int final_length = SortedList_length(&head);
+  int final_length = 0;
+  for (long i = 0; i < nlists; i++) {
+    int rc = SortedList_length(&data->heads[i]);
+    if (rc == -1) {
+      fprintf(stderr, "Synchronization error detected: list length could not be found\n");
+      exit(2);
+    }
+    final_length += rc;
+  }
   if (final_length != 0) {
     fprintf(stderr, "Synchronization error detected: final list length is non-zero\n");
     exit(2);
@@ -363,12 +423,13 @@ int main(int argc, char *argv[]) {
   } else {
     fprintf(stdout, "%s,", "none");
   }
-  fprintf(stdout, "%ld,%ld,1,%ld,%lld,%lld,%lld\n", nthreads, niterations,
+  fprintf(stdout, "%ld,%ld,%ld,%ld,%lld,%lld,%lld\n", nthreads, niterations, nlists,
           noperations, ns_elapsed, ns_elapsed/noperations, lock_time/noperations);
 
   /* Free dynamically allocated variables */
   if (opt_sync == 'm')
-      pthread_mutex_destroy(&mutexlist);
+    for(long i = 0; i < nlists; i++)
+      pthread_mutex_destroy(&mutexlist[i]);
   for (int i = 0; i < nelements; i++) {
     free(keys[i]);
   }
@@ -376,5 +437,7 @@ int main(int argc, char *argv[]) {
   free(elements);
   free(threads);
   free(data);
+  free(heads);
+  free(mutexlist);
   return 0;
 }
