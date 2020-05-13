@@ -31,13 +31,35 @@ typedef struct t_data {
 } t_data;
 
 void *list_test(void *t) {
+  struct timespec timer_start;
+  struct timespec timer_fin;
+  long long * thread_time = malloc(sizeof(long long));
+  *thread_time = 0;
   t_data *data = (t_data *)t;
   for (long i = 0; i < data->niterations; i++) {
+    if (opt_sync) {
+      /* Capture high resolution starting time */
+      if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
+        fprintf(stderr, "Pre-operation clock time retrieval failed: %s\n", strerror(errno));
+        exit(1);
+      }
+    }
     if (opt_sync == 'm')
       pthread_mutex_lock(&mutexlist);
     if (opt_sync == 's')
       while(__sync_lock_test_and_set(&spinlock, 1) == 1);
+    if (opt_sync) {
+      /* Capture high resolution finish time */
+      if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
+        fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
+        exit(1);
+      }
+      long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
+      long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
+      (*thread_time) += ns_elapsed;
+    }
     long index = data->tid * data->niterations + i;
+
     // fprintf(stdout, "KEY #%ld: %s (Thread %ld)\n", index, data->elements[index].key, data->tid);
     SortedList_insert(data->head, &(data->elements[index]));
     if (opt_sync == 'm')
@@ -46,10 +68,27 @@ void *list_test(void *t) {
       __sync_lock_release(&spinlock);
   }
 
+  if (opt_sync) {
+    /* Capture high resolution starting time */
+    if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
+      fprintf(stderr, "Pre-operation clock time retrieval failed: %s\n", strerror(errno));
+      exit(1);
+    }
+  }
   if (opt_sync == 'm')
     pthread_mutex_lock(&mutexlist);
   if (opt_sync == 's')
     while(__sync_lock_test_and_set(&spinlock, 1) == 1);
+  if (opt_sync) {
+    /* Capture high resolution finish time */
+    if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
+      fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
+      exit(1);
+    }
+    long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
+    long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
+    (*thread_time) += ns_elapsed;
+  }
   int length = SortedList_length(data->head);
   if (length == -1) {
     fprintf(stderr, "Synchronization error detected: list length could not be found\n");
@@ -59,13 +98,30 @@ void *list_test(void *t) {
     pthread_mutex_unlock(&mutexlist);
   if (opt_sync == 's')
     __sync_lock_release(&spinlock);
-  
+  if (opt_sync) {
+    /* Capture high resolution finish time */
+    if (clock_gettime(CLOCK_MONOTONIC, &timer_fin) == -1) {
+      fprintf(stderr, "Post-operation clock time retrieval failed: %s\n", strerror(errno));
+      exit(1);
+    }
+    long long s_elapsed = (long long) timer_fin.tv_sec - timer_start.tv_sec;
+    long long ns_elapsed = s_elapsed * 1000000000 + (timer_fin.tv_nsec - timer_start.tv_nsec);
+    (*thread_time) += ns_elapsed;
+  }
   for (long i = 0; i < data->niterations; i++) {
+    if (opt_sync) {
+      /* Capture high resolution starting time */
+      if (clock_gettime(CLOCK_MONOTONIC, &timer_start) == -1) {
+        fprintf(stderr, "Pre-operation clock time retrieval failed: %s\n", strerror(errno));
+        exit(1);
+      }
+    }
     if (opt_sync == 'm')
       pthread_mutex_lock(&mutexlist);
     if (opt_sync == 's')
       while(__sync_lock_test_and_set(&spinlock, 1) == 1);
     long index = data->tid * data->niterations + i;
+
     SortedListElement_t *del = SortedList_lookup(data->head, data->elements[index].key);
     if (del) {
       if (SortedList_delete(del)) {
@@ -82,8 +138,7 @@ void *list_test(void *t) {
     if (opt_sync == 's')
       __sync_lock_release(&spinlock);
   }
-  
-  pthread_exit(NULL);
+  pthread_exit((void *)thread_time);
 }
 
 void handleseg() {
@@ -219,6 +274,8 @@ int main(int argc, char *argv[]) {
   int rc;
   struct timespec ts_old;
   struct timespec ts_new;
+  void * return_val = NULL;
+  long long lock_time = 0;
 
   /* Explicitly state threads are joinable */
   pthread_attr_init(&attr);
@@ -253,12 +310,17 @@ int main(int argc, char *argv[]) {
   /* Join all threads */
   pthread_attr_destroy(&attr);
   for (long t = 0; t < nthreads; t++) {
-    rc = pthread_join(threads[t], NULL);
+    rc = pthread_join(threads[t], &return_val);
     if (rc) {
       fprintf(stderr, "Error, return code from pthread_join() is %d\n", rc);
       exit(2);
     }
+    long long * thread_time = (long long *) return_val;
+    lock_time += *thread_time;
+    free(return_val);
   }
+  if(!opt_sync)
+    lock_time = 0;
 
   /* Capture post-operation time */
   if (clock_gettime(CLOCK_MONOTONIC, &ts_new) == -1) {
@@ -301,8 +363,8 @@ int main(int argc, char *argv[]) {
   } else {
     fprintf(stdout, "%s,", "none");
   }
-  fprintf(stdout, "%ld,%ld,1,%ld,%lld,%lld\n", nthreads, niterations,
-          noperations, ns_elapsed, ns_elapsed/noperations);
+  fprintf(stdout, "%ld,%ld,1,%ld,%lld,%lld,%lld\n", nthreads, niterations,
+          noperations, ns_elapsed, ns_elapsed/noperations, lock_time/noperations);
 
   /* Free dynamically allocated variables */
   if (opt_sync == 'm')
