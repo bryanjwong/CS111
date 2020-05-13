@@ -80,13 +80,13 @@ set ylabel "Throughput (Operations per Second)"
 set logscale y 10
 set output 'lab2b_4.png'
 plot \
-  "< grep -e 'list-none-m,[0-9]*,[0-9]*,1' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-m,[0-9]*,1000,1,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '1 list' with linespoints lc rgb 'red', \
-  "< grep -e 'list-none-m,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-m,[0-9]*,1000,4,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '4 lists' with linespoints lc rgb 'green', \
-  "< grep -e 'list-none-m,[0-9]*,[0-9]*,8' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-m,[0-9]*,1000,8,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '8 lists' with linespoints lc rgb 'violet', \
-  "< grep -e 'list-none-m,[0-9]*,[0-9]*,16' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-m,[0-9]*,1000,16,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '16 lists' with linespoints lc rgb 'orange'
 
 # lab2b_5.png
@@ -97,11 +97,11 @@ set ylabel "Throughput (Operations per Second)"
 set logscale y 10
 set output 'lab2b_5.png'
 plot \
-  "< grep -e 'list-none-s,[0-9]*,[0-9]*,1' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-s,[0-9]*,1000,1,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '1 list' with linespoints lc rgb 'red', \
-  "< grep -e 'list-none-s,[0-9]*,[0-9]*,4' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-s,[0-9]*,1000,4,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '4 lists' with linespoints lc rgb 'green', \
-  "< grep -e 'list-none-s,[0-9]*,[0-9]*,8' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-s,[0-9]*,1000,8,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '8 lists' with linespoints lc rgb 'violet', \
-  "< grep -e 'list-none-s,[0-9]*,[0-9]*,16' lab2b_list.csv" using ($2):(1000000000/($7)) \
+  "< grep -e 'list-none-s,[0-9]*,1000,16,' lab2b_list.csv" using ($2):(1000000000/($7)) \
     title '16 lists' with linespoints lc rgb 'orange'

@@ -1,18 +1,27 @@
-Total: 1589 samples
-    1511  95.1%  95.1%     1587  99.9% list_test
-      55   3.5%  98.6%       59   3.7% SortedList_lookup
-       7   0.4%  99.0%       16   1.0% SortedList_insert
-       5   0.3%  99.3%        5   0.3% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:165
-       4   0.3%  99.6%        4   0.3% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:1721
-       2   0.1%  99.7%        2   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:205
-       1   0.1%  99.7%        1   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:200
-       1   0.1%  99.8%        1   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:204
-       1   0.1%  99.9%        1   0.1% SortedList_length
-       1   0.1%  99.9%        1   0.1% _int_free
-       1   0.1% 100.0%        1   0.1% _int_malloc
-       0   0.0% 100.0%     1587  99.9% ?? /usr/src/debug////////glibc-2.17-c758a686/misc/../sysdeps/unix/sysv/linux/x86_64/clone.S:111
-       0   0.0% 100.0%        1   0.1% __GI___libc_malloc
+Total: 1342 samples
+    1203  89.6%  89.6%     1340  99.9% list_test
+      52   3.9%  93.5%       52   3.9% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:165
+      19   1.4%  94.9%       19   1.4% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:1721
+      15   1.1%  96.1%       78   5.8% SortedList_insert
+      12   0.9%  96.9%       12   0.9% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:1720
+       6   0.4%  97.4%        6   0.4% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:205
+       6   0.4%  97.8%       57   4.2% SortedList_lookup
+       5   0.4%  98.2%        5   0.4% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:1730
+       4   0.3%  98.5%        4   0.3% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:130
+       3   0.2%  98.7%        3   0.2% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:203
+       2   0.1%  98.9%        2   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:134
+       2   0.1%  99.0%        2   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:204
+       2   0.1%  99.2%        2   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:1714
+       2   0.1%  99.3%        2   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:1729
+       2   0.1%  99.5%        2   0.1% _init
+       2   0.1%  99.6%        2   0.1% hash
+       1   0.1%  99.7%        1   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:160
+       1   0.1%  99.8%        1   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:200
+       1   0.1%  99.9%        1   0.1% ?? /usr/src/debug////////glibc-2.17-c758a686/string/../sysdeps/x86_64/multiarch/strcmp-sse42.S:202
+       1   0.1%  99.9%        2   0.1% main
+       1   0.1% 100.0%        1   0.1% malloc_consolidate
+       0   0.0% 100.0%     1340  99.9% ?? /usr/src/debug////////glibc-2.17-c758a686/misc/../sysdeps/unix/sysv/linux/x86_64/clone.S:111
        0   0.0% 100.0%        2   0.1% __libc_start_main
+       0   0.0% 100.0%        1   0.1% _int_free
        0   0.0% 100.0%        2   0.1% _start
-       0   0.0% 100.0%        2   0.1% main
-       0   0.0% 100.0%     1587  99.9% start_thread
+       0   0.0% 100.0%     1340  99.9% start_thread

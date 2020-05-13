@@ -58,3 +58,72 @@ performing list operations, each of the blocked threads will be accumulating
 its individual wait-for-lock time. This causes an increase in the number of
 threads to have a multiplicative effect on wait-for-lock time, which is why it
 goes up faster than completion time per operation.
+
+QUESTION 2.3.4 - Performance of Partitioned Lists
+=================================================
+Explain the change in performance of the synchronized methods as a function of
+the number of lists. Should the throughput continue increasing as the number of lists
+is further increased? If not, explain why not. It seems reasonable to suggest the
+throughput of an N-way partitioned list should be equivalent to the throughput of a
+single list with fewer (1/N) threads. Does this appear to be true in the above curves?
+If not, explain why not.
+
+The performance of the synchronized methods increases as the number of lists is
+increased, as each additional list allows more parallelism to occur. As a result,
+the odds of a conflict where two threads are attempting to use the same lock
+decreases. Since the SEASnet machines have a large number of cores, having multiple
+lists allows for concurrent operations of many threads. However, the throughput
+gains will eventually have diminishing returns as the odds of a collision between
+two threads decreases and each CPU core is statistically guaranteed to have a
+running thread at any given time.
+
+From analyzing my data, it does not appear that the throughput of an N-way
+partitioned list is equivalent to the throughput of a single list with 1/N threads.
+The list implementation seems to consistently outperform the single list. This is
+because using lists enables parallelism, where multiple threads are able to
+contribute to the list operations at the same time, leading to a higher
+throughput than the single list, unparallelized version.
+
+Included Files:
+
+1) lab2_list.c: a C driver program that runs various SortedList operations with
+   		the following options
+
+		--threads=#		 specify number of threads
+		--iterations=#		 specify number of iterations
+		--yield=[idl]		 specify types of yielding
+		--sync=[m/s]		 specify mutex or spin-lock synchronization
+		--lists=#		 specify number of sublists
+
+2) Makefile: contains the following targets
+
+   	     	default:		 builds lab2_list
+		tests:			 runs specified test cases to generate CSV results
+		profile:		 run tests with profiling tools to generate
+					 an execution profiling report
+		graphs:			 use gnuplot to generate required graphs
+		clean:			 delete all programs and output generated
+					 by the Makefile
+
+3) SortedList.h: header file for SortedList interface
+
+4) SortedList.c: implementation of the SortedList interface
+
+5) lab2b_list.csv: Test results used for GNUplot graphing
+
+6) profile.out: Execution profiling report showing where time was spent in the
+   		un-partitioned spin lock implementation
+
+7) lab2b_1.png: throughput vs. number of threads for mutex and spin-lock synchronized
+   		list operations.
+
+8) lab2b_2.png: mean time per mutex wait and mean time per operation for
+   		mutex-synchronized list operations.
+
+9) lab2b_3.png: successful iterations vs. threads for each synchronization method.
+
+10) lab2b_4.png: throughput vs. number of threads for mutex synchronized partitioned lists.
+
+11) lab2b_5.png: throughput vs. number of threads for spin-lock-synchronized partitioned lists.
+
+12) lab2b_list.gp: Script that generates GNUplot graphs

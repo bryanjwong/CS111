@@ -7,10 +7,10 @@ GPERF=/w/home.06/ee/ugrad/bryan/CS111/Project2B/gperf
 default:
 	@gcc -Wall -Wextra -lpthread -g -lprofiler SortedList.c lab2_list.c -o lab2_list
 
-.PHONY: clean tests graphs dist
+.PHONY: clean tests graphs dist profile
 
 clean:
-	@-rm lab2_list 2>/dev/null || true
+	@-rm lab2_list lab2b-805111517.tar.gz 2>/dev/null || true
 
 tests: default
 	rm -f lab2b_list.csv
@@ -63,7 +63,7 @@ tests: default
 
 	./lab2_list --threads=1 --iterations=10 --lists=4 --yield=id --sync=m >> lab2b_list.csv
 	./lab2_list --threads=1 --iterations=20 --lists=4 --yield=id --sync=m >> lab2b_list.csv
-  ./lab2_list --threads=1 --iterations=40 --lists=4 --yield=id --sync=m >> lab2b_list.csv
+	./lab2_list --threads=1 --iterations=40 --lists=4 --yield=id --sync=m >> lab2b_list.csv
 	./lab2_list --threads=1 --iterations=80 --lists=4 --yield=id --sync=m >> lab2b_list.csv
 
 	./lab2_list --threads=4 --iterations=10 --lists=4 --yield=id --sync=m >> lab2b_list.csv
@@ -88,7 +88,7 @@ tests: default
 
 	./lab2_list --threads=1 --iterations=10 --lists=4 --yield=id --sync=s >> lab2b_list.csv
 	./lab2_list --threads=1 --iterations=20 --lists=4 --yield=id --sync=s >> lab2b_list.csv
-  ./lab2_list --threads=1 --iterations=40 --lists=4 --yield=id --sync=s >> lab2b_list.csv
+	./lab2_list --threads=1 --iterations=40 --lists=4 --yield=id --sync=s >> lab2b_list.csv
 	./lab2_list --threads=1 --iterations=80 --lists=4 --yield=id --sync=s >> lab2b_list.csv
 
 	./lab2_list --threads=4 --iterations=10 --lists=4 --yield=id --sync=s >> lab2b_list.csv
@@ -155,6 +155,10 @@ profile: default
 	LD_PRELOAD=($GPERF)/lib/libprofiler.so.0
 	CPUPROFILE=./raw.gperf ./lab2_list --iterations=1000 --threads=12 --sync=s
 	$(GPERF)/bin/pprof --text ./lab2_list ./raw.gperf > profile.out
+	$(GPERF)/bin/pprof --list=threadFunc ./lab2_list ./raw.gperf >> profile.out
 	rm -f ./raw.gperf
 
-dist: graphs
+dist: graphs profile
+	tar -czvf lab2b-805111517.tar.gz lab2_list.c SortedList.h SortedList.c \
+		lab2b_list.gp lab2b_list.csv profile.out Makefile README \
+		lab2b_1.png lab2b_2.png lab2b_3.png lab2b_4.png lab2b_5.png
