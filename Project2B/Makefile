@@ -158,7 +158,7 @@ profile: default
 	$(GPERF)/bin/pprof --list=threadFunc ./lab2_list ./raw.gperf >> profile.out
 	rm -f ./raw.gperf
 
-dist: graphs profile
+dist: graphs
 	tar -czvf lab2b-805111517.tar.gz lab2_list.c SortedList.h SortedList.c \
 		lab2b_list.gp lab2b_list.csv profile.out Makefile README \
 		lab2b_1.png lab2b_2.png lab2b_3.png lab2b_4.png lab2b_5.png
