@@ -2,8 +2,10 @@
 # EMAIL: bryanjwong@g.ucla.edu
 # ID: 805111517
 
+GPERF=/w/home.06/ee/ugrad/bryan/CS111/Project2B/gperf
+
 default:
-	@gcc -Wall -Wextra -pthread -g -lprofiler SortedList.c lab2_list.c -o lab2_list
+	@gcc -Wall -Wextra -lpthread -g -lprofiler SortedList.c lab2_list.c -o lab2_list
 
 .PHONY: clean tests graphs dist
 
@@ -33,10 +35,10 @@ graphs: tests
 	./lab2b_list.gp
 
 profile: default
-	rm -f ./list.prof profile.out
-	LD_PRELOAD="/usr/lib/libprofiler.so"
-	CPUPROFILE=./list.prof ./lab2_list --iterations=1000 --threads=12 --sync=s
-	pprof --text ./lab2_list ./list.prof > profile.out
-	rm -f ./list.prof
+	rm -f ./raw.gperf profile.out
+	LD_PRELOAD=($GPERF)/lib/libprofiler.so.0
+	CPUPROFILE=./raw.gperf ./lab2_list --iterations=1000 --threads=12 --sync=s
+	$(GPERF)/bin/pprof --text ./lab2_list ./raw.gperf > profile.out
+	rm -f ./raw.gperf
 
 dist: graphs
