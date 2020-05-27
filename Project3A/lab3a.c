@@ -31,7 +31,7 @@ void print_dir(int fd, int block_offset, int parent_inode) {
   unsigned int dir_offset = 0;
 
   struct ext2_dir_entry dir_entry;
-  do {          
+  do {
     memset(dir_entry.name, 0, 256);
     int ret = pread(fd, &dir_entry, sizeof(struct ext2_dir_entry), FIRST_DIR_OFFSET + dir_offset);
     if (ret < 0) {
@@ -39,7 +39,7 @@ void print_dir(int fd, int block_offset, int parent_inode) {
       exit(1);
     }
 
-    if (dir_entry.inode != 0) {       
+    if (dir_entry.inode != 0) {
       memset(dir_entry.name + dir_entry.name_len, 0, 256 - dir_entry.name_len);
       fprintf(stdout, "DIRENT,%d,%d,%d,%d,%d,'%s'\n", parent_inode, dir_offset, dir_entry.inode,
               dir_entry.rec_len, dir_entry.name_len, dir_entry.name);
@@ -50,7 +50,7 @@ void print_dir(int fd, int block_offset, int parent_inode) {
 
 // TODO: Fix Logical Block Offset, Print out directory info if part inode is a dir
 int search_indirect_block(int fd, int block_offset, int parent_inode, int indirection_layer, int log_offset, char isdir) {
-  
+
   uint32_t * data = malloc(BLOCK_SIZE);
   if (data == NULL) {
     fprintf(stderr, "Error, malloc failed\n");
@@ -67,11 +67,11 @@ int search_indirect_block(int fd, int block_offset, int parent_inode, int indire
   unsigned int i;
   unsigned int logical_blk_offset;
   for (i = 0; i < NUM_REFS; i++) {
-    if (data[i] != 0) {  
+    if (data[i] != 0) {
       if (indirection_layer == 1) {
         if (isdir) {
           print_dir(fd, data[i], parent_inode);
-        }     
+        }
       } else {
         search_indirect_block(fd, data[i], parent_inode, indirection_layer - 1, log_offset, isdir);
       }
@@ -111,8 +111,8 @@ int main(int argc, char *argv[]) {
 
   BLOCK_SIZE = EXT2_MIN_BLOCK_SIZE << superblock.s_log_block_size;
 
-  fprintf(stdout, "SUPERBLOCK,%d,%d,%d,%d,%d,%d,%d\n", superblock.s_blocks_count, 
-          superblock.s_inodes_count, BLOCK_SIZE, 
+  fprintf(stdout, "SUPERBLOCK,%d,%d,%d,%d,%d,%d,%d\n", superblock.s_blocks_count,
+          superblock.s_inodes_count, BLOCK_SIZE,
           superblock.s_inode_size, superblock.s_blocks_per_group,
           superblock.s_inodes_per_group, superblock.s_first_ino);
 
@@ -177,33 +177,38 @@ int main(int argc, char *argv[]) {
       }
 
       if (inode.i_mode != 0 && inode.i_links_count !=  0) {
+
         fprintf(stdout, "INODE,%d,", j+1);
         if ((inode.i_mode & 0xF000) == EXT2_S_IFREG)
-          fprintf(stdout, "f,"); 
+          fprintf(stdout, "f,");
         else if ((inode.i_mode & 0xF000) == EXT2_S_IFDIR)
           fprintf(stdout, "d,");
         else if ((inode.i_mode & 0xF000) == EXT2_S_IFLNK)
-          fprintf(stdout, "s,"); 
+          fprintf(stdout, "s,");
         else
           fprintf(stdout, "?,");
-       
+
         fprintf(stdout, "%o,%d,%d,%d,", inode.i_mode & 0xFFF, inode.i_uid, inode.i_gid, inode.i_links_count);
-        
+
         char time_string[80];
         struct tm ts;
+        time_t temp_time;
 
         /* Time of last inode change */
-        ts = *gmtime((time_t *)&inode.i_ctime);
+        temp_time = (time_t) inode.i_ctime;
+        ts = *gmtime(&temp_time);
         strftime(time_string, sizeof(time_string), "%m/%d/%y %H:%M:%S", &ts);
         fprintf(stdout, "%s,", time_string);
-        
+
         /* Time of last modification */
-        ts = *gmtime((time_t *)&inode.i_mtime);
+        temp_time = (time_t) inode.i_mtime;
+        ts = *gmtime(&temp_time);
         strftime(time_string, sizeof(time_string), "%m/%d/%y %H:%M:%S", &ts);
         fprintf(stdout, "%s,", time_string);
 
         /* Time of last access */
-        ts = *gmtime((time_t *)&inode.i_atime);
+        temp_time = (time_t) inode.i_atime;
+        ts = *gmtime(&temp_time);
         strftime(time_string, sizeof(time_string), "%m/%d/%y %H:%M:%S", &ts);
         fprintf(stdout, "%s,", time_string);
 
@@ -214,7 +219,7 @@ int main(int argc, char *argv[]) {
             (((inode.i_mode & 0XF000) == EXT2_S_IFLNK) && inode.i_size > 60)) {
           for (k = 0; k < 15; k++) {
             fprintf(stdout, ",%d", inode.i_block[k]);
-          }      
+          }
         }
         fprintf(stdout, "\n");
 
@@ -222,7 +227,7 @@ int main(int argc, char *argv[]) {
         if ((inode.i_mode & 0xF000) == EXT2_S_IFDIR) {
           for (k = 0; k < 12; k++) {
             print_dir(fd, inode.i_block[k], j+1);
-          }    
+          }
         }
 
         /* Singly, Doubly, Triply Indirect Lists */
@@ -238,7 +243,7 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-  
+
   if (close(fd) != 0) {
     fprintf(stderr, "Error while attempting to close file %s: %s\n", argv[1], strerror(errno));
     exit(1);
