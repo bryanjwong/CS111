@@ -31,6 +31,7 @@ void print_dir(int fd, int block_offset, int parent_inode) {
   unsigned int dir_offset = 0;
 
   struct ext2_dir_entry dir_entry;
+
   do {
     memset(dir_entry.name, 0, 256);
     int ret = pread(fd, &dir_entry, sizeof(struct ext2_dir_entry), FIRST_DIR_OFFSET + dir_offset);
@@ -45,7 +46,7 @@ void print_dir(int fd, int block_offset, int parent_inode) {
               dir_entry.rec_len, dir_entry.name_len, dir_entry.name);
     }
     dir_offset += dir_entry.rec_len;
-  } while(dir_offset < BLOCK_SIZE && dir_entry.inode != 0);
+  } while(dir_offset < BLOCK_SIZE);
 }
 
 // TODO: Fix Logical Block Offset, Print out directory info if part inode is a dir
@@ -226,7 +227,8 @@ int main(int argc, char *argv[]) {
         /* Directory Entries */
         if ((inode.i_mode & 0xF000) == EXT2_S_IFDIR) {
           for (k = 0; k < 12; k++) {
-            print_dir(fd, inode.i_block[k], j+1);
+            if (inode.i_block[k] != 0)
+              print_dir(fd, inode.i_block[k], j+1);
           }
         }
 
