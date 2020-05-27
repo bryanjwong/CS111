@@ -31,7 +31,8 @@ void print_dir(int fd, int block_offset, int parent_inode) {
   unsigned int dir_offset = 0;
 
   struct ext2_dir_entry dir_entry;
-  do {         
+  do {          
+    memset(dir_entry.name, 0, 256);
     int ret = pread(fd, &dir_entry, sizeof(struct ext2_dir_entry), FIRST_DIR_OFFSET + dir_offset);
     if (ret < 0) {
       fprintf(stderr, "Error while attempting to read inode #%d's directory entry: %s\n", parent_inode, strerror(errno));
@@ -39,6 +40,7 @@ void print_dir(int fd, int block_offset, int parent_inode) {
     }
 
     if (dir_entry.inode != 0) {       
+      memset(dir_entry.name + dir_entry.name_len, 0, 256 - dir_entry.name_len);
       fprintf(stdout, "DIRENT,%d,%d,%d,%d,%d,'%s'\n", parent_inode, dir_offset, dir_entry.inode,
               dir_entry.rec_len, dir_entry.name_len, dir_entry.name);
     }
@@ -69,12 +71,11 @@ int search_indirect_block(int fd, int block_offset, int parent_inode, int indire
       if (indirection_layer == 1) {
         if (isdir) {
           print_dir(fd, data[i], parent_inode);
-        }
-        logical_blk_offset = data[i];
+        }     
       } else {
-        logical_blk_offset = log_offset + i;
         search_indirect_block(fd, data[i], parent_inode, indirection_layer - 1, log_offset, isdir);
       }
+      logical_blk_offset = log_offset + i;
       fprintf(stdout, "INDIRECT,%d,%d,%d,%d,%d\n", parent_inode, indirection_layer, logical_blk_offset, block_offset, data[i]);
     }
   }
@@ -197,12 +198,12 @@ int main(int argc, char *argv[]) {
         fprintf(stdout, "%s,", time_string);
         
         /* Time of last modification */
-        ts = *gmtime((time_t *)&inode.i_atime);
+        ts = *gmtime((time_t *)&inode.i_mtime);
         strftime(time_string, sizeof(time_string), "%m/%d/%y %H:%M:%S", &ts);
         fprintf(stdout, "%s,", time_string);
 
         /* Time of last access */
-        ts = *gmtime((time_t *)&inode.i_mtime);
+        ts = *gmtime((time_t *)&inode.i_atime);
         strftime(time_string, sizeof(time_string), "%m/%d/%y %H:%M:%S", &ts);
         fprintf(stdout, "%s,", time_string);
 
