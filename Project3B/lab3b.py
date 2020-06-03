@@ -49,7 +49,7 @@ def check_block(bfree, visited, first_block, last_block, bnum, data, depth):
     elif bnum < first_block or bnum == 64:
         print("RESERVED {}BLOCK {} IN INODE {} AT OFFSET {}".format(type, bnum, data[1], offset))
     elif bfree.get(bnum):
-        print("ALLOCATED {}BLOCK {} ON FREELIST".format(etype, bnum))
+        print("ALLOCATED {}BLOCK {} ON FREELIST".format(type, bnum))
     else:
         visited[bnum].append([depth, int(data[1]), offset])
 
