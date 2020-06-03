@@ -42,20 +42,16 @@ def check_block(bfree, visited, first_block, last_block, bnum, data, depth):
         else:
             type = ""
 
-    error = None
     if bnum == 0:
         return
     elif bnum < 0 or bnum > last_block:
-        error = "INVALID"
+        print("INVALID {}BLOCK {} IN INODE {} AT OFFSET {}".format(type, bnum, data[1], offset))
     elif bnum < first_block or bnum == 64:
-        error = "RESERVED"
+        print("RESERVED {}BLOCK {} IN INODE {} AT OFFSET {}".format(type, bnum, data[1], offset))
     elif bfree.get(bnum):
-        error = "ALLOCATED"
+        print("ALLOCATED {}BLOCK {} ON FREELIST".format(etype, bnum))
     else:
         visited[bnum].append([depth, int(data[1]), offset])
-
-    if error:
-        print("{} {}BLOCK {} IN INODE {} AT OFFSET {}".format(error, type, bnum, data[1], offset))
 
     return
 
@@ -145,7 +141,6 @@ def main():
     # Check for duplicate and unreferenced blocks
     for i in range(first_block, last_block):
         block_free = bfree.get(i)
-        error = ""
         if len(visited[i]) == 0 and not block_free:
             print("UNREFERENCED BLOCK {}".format(i))
             inconsistency_flag = True
