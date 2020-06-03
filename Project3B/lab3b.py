@@ -74,6 +74,7 @@ def main():
     num_inodes = -1
     first_block = -1
     last_block = -1
+    inconsistency_flag = False
 
     try:
         with open(sys.argv[1]) as csvfile:
@@ -118,10 +119,12 @@ def main():
         # Used and free (i_mode != 0 and inode # is free on the bitmap)
         if inode_alloc and inode_free:
             print("ALLOCATED INODE {} ON FREELIST".format(i))
+            inconsistency_flag = True
 
         # Unallocated and in use (no dedicated line in csv but in use on bitmap)
         if not inode_alloc and not inode_free and i > 10:
             print("UNALLOCATED INODE {} NOT ON FREELIST".format(i))
+            inconsistency_flag = True
 
         if inode_alloc:
             link_count[i] = int(inode_alloc[6])
@@ -145,6 +148,7 @@ def main():
         error = ""
         if len(visited[i]) == 0 and not block_free:
             print("UNREFERENCED BLOCK {}".format(i))
+            inconsistency_flag = True
         elif len(visited[i]) > 1:
             for duplicate in visited[i]:
                 type = ""
@@ -155,6 +159,7 @@ def main():
                 elif duplicate[0] == 3:
                     type = "TRIPLE INDIRECT "
                 print("DUPLICATE {}BLOCK {} IN INODE {} AT OFFSET {}".format(type, i, duplicate[1], duplicate[2]))
+                inconsistency_flag = True
 
     dir_link_count = [0] * num_inodes
     dir_parent = [None] * num_inodes
@@ -167,12 +172,15 @@ def main():
             inode_name = entry[6]
             if inode_num < 1 or inode_num > num_inodes:
                 print("DIRECTORY INODE {} NAME {} INVALID INODE {}".format(parent_inode, inode_name, inode_num))
+                inconsistency_flag = True
+                continue
             elif ifree.get(inode_num):
                 print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(parent_inode, inode_name, inode_num))
+                inconsistency_flag = True
             elif inode_name == "'.'" and parent_inode != inode_num:
                 print("DIRECTORY INODE {} NAME {} LINK TO INODE {} SHOULD BE {}".format(parent_inode, inode_name, inode_num, parent_inode))
-
-            if inode_name == "'..'":
+                inconsistency_flag = True
+            elif inode_name == "'..'":
                 dir_parent_check[parent_inode] = inode_num
             elif inode_name != "'.'":
                 dir_parent[inode_num] = parent_inode
@@ -183,15 +191,24 @@ def main():
     for i in range(num_inodes):
         if dir_link_count[i] != link_count[i]:
             print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, dir_link_count[i], link_count[i]))
+            inconsistency_flag = True
 
     for parent_inode_num in dir_parent_check:
         if parent_inode_num == 2:
             if int(dir_parent_check[parent_inode_num]) != 2: # Root directory edge case
                 print("DIRECTORY INODE 2 NAME '..' LINK TO INODE {} SHOULD BE 2".format(dir_parent_check[parent_inode_num]))
+                inconsistency_flag = True
         elif dir_parent_check[parent_inode_num] != dir_parent[parent_inode_num]:
             print("DIRECTORY INODE {} NAME '..' LINK TO INODE {} SHOULD BE {}".format(parent_inode_num, parent_inode_num, dir_parent[parent_inode_num]))
+            inconsistency_flag = True
         elif dir_parent[parent_inode_num] == None:
             print("DIRECTORY INODE {} NAME '..' LINK TO INODE {} SHOULD BE {}".format(dir_parent_check[parent_inode_num], parent_inode_num, dir_parent_check[parent_inode_num]))
+            inconsistency_flag = True
+
+    if inconsistency_flag:
+        exit(2)
+    else:
+        exit(1)
 
 if __name__ == "__main__":
     main()
