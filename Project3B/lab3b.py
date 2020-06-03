@@ -159,12 +159,14 @@ def main():
     dir_link_count = [0] * num_inodes
     dir_parent = [None] * num_inodes
     dir_parent_check = {}
+    inode_names = [None] * num_inodes
 
     # Directory Inconsistencies
     for inode_num in dirent:
         for entry in dirent[inode_num]:
             parent_inode = int(entry[1])
             inode_name = entry[6]
+            inode_names[inode_num] = inode_name
             if inode_num < 1 or inode_num > num_inodes:
                 print("DIRECTORY INODE {} NAME {} INVALID INODE {}".format(parent_inode, inode_name, inode_num))
                 inconsistency_flag = True
@@ -185,7 +187,8 @@ def main():
             print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, dir_link_count[i], link_count[i]))
             inconsistency_flag = True
         if dir_parent[i] and ifree.get(i):
-            print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(dir_parent[i], dirent[i][6], i))
+            print(i)
+            print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(dir_parent[i], inode_names[i], i))
             inconsistency_flag = True
 
     for parent_inode_num in dir_parent_check:
