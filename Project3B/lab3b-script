@@ -1,0 +1,15 @@
+# NAME: Bryan Wong
+# EMAIL: bryanjwong@g.ucla.edu
+# ID: 805111517
+
+#! /bin/bash
+
+if [ $# -ne 1 ]
+then
+	echo "Expected 1 argument but received ${#}"
+	exit 1
+fi
+
+python3 lab3b.py $1
+
+exit $?
