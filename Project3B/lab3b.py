@@ -169,9 +169,6 @@ def main():
                 print("DIRECTORY INODE {} NAME {} INVALID INODE {}".format(parent_inode, inode_name, inode_num))
                 inconsistency_flag = True
                 continue
-            elif ifree.get(inode_num):
-                print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(parent_inode, inode_name, inode_num))
-                inconsistency_flag = True
             elif inode_name == "'.'" and parent_inode != inode_num:
                 print("DIRECTORY INODE {} NAME {} LINK TO INODE {} SHOULD BE {}".format(parent_inode, inode_name, inode_num, parent_inode))
                 inconsistency_flag = True
@@ -186,6 +183,9 @@ def main():
     for i in range(num_inodes):
         if dir_link_count[i] != link_count[i] and ifree.get(i) == None:
             print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, dir_link_count[i], link_count[i]))
+            inconsistency_flag = True
+        if dir_parent[i] and ifree.get(i):
+            print("DIRECTORY INODE {} NAME {} UNALLOCATED INODE {}".format(dir_parent[i], dirent[i][6], i))
             inconsistency_flag = True
 
     for parent_inode_num in dir_parent_check:
