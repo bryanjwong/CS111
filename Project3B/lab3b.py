@@ -184,7 +184,7 @@ def main():
 
     # Inconsistent Link Count
     for i in range(num_inodes):
-        if dir_link_count[i] != link_count[i]:
+        if dir_link_count[i] != link_count[i] and ifree.get(i) == None:
             print("INODE {} HAS {} LINKS BUT LINKCOUNT IS {}".format(i, dir_link_count[i], link_count[i]))
             inconsistency_flag = True
 
