@@ -22,12 +22,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <openssl/ssl.h>
 #include <netdb.h>
 
 #define TEMPERATURE_MRAA 1
 
 mraa_aio_context temperature;
 struct tm last_time;
+
+SSL * ssl;
 
 /* Default Settings */
 int SAMPLE_PERIOD = 1;
@@ -79,7 +82,7 @@ void handle_button_press() {
   char buf[64];
   if (get_localtime(buf, 1) > 0) {
     n = sprintf(buf, "%s SHUTDOWN\n", buf);
-    write(sockfd, buf, n);
+    SSL_write(ssl, buf, n);
     if (logfd) {
       write(logfd, buf, n);
     }
@@ -88,6 +91,8 @@ void handle_button_press() {
     free(command);
   }
   mraa_aio_close(temperature);
+  SSL_shutdown(ssl);
+  SSL_free(ssl);
   exit(0);
 }
 
@@ -235,11 +240,11 @@ int main(int argc, char *argv[]) {
     logfd = creat(logfile, 0666);
     if (logfd < 0) {
       fprintf(stderr, "Error with logfile, could not creat %s: %s\n", logfile, strerror(errno));
-      exit(1);
+      exit(2);
     }
   }
 
-  /* Open a TCP  Connection */
+  /* Open a TCP Connection */
   struct sockaddr_in serv_addr;
   struct hostent *server;
 
@@ -264,10 +269,32 @@ int main(int argc, char *argv[]) {
     exit(2);
   }
 
+  /* SSL */
+  SSL_library_init();
+  SSL_load_error_strings();
+  OpenSSL_add_all_algorithms();
+  SSL_CTX * ctx = SSL_CTX_new(TLSv1_client_method());
+  if (ctx == NULL) {
+    fprintf(stderr, "Error, failed to get SSL context\n");
+    exit(2);
+  }
+  if ((ssl = SSL_new(ctx)) == NULL) {
+    fprintf(stderr, "Error, failed to complete SSL setup\n");
+    exit(2);
+  }
+  if (!SSL_set_fd(ssl, sockfd)) {
+    fprintf(stderr, "Error, failed to associate fd and SSL\n");
+    exit(2);
+  }
+  if (SSL_connect(ssl) != 1) {
+    fprintf(stderr, "Error, TLS/SSL handshake failed\n");
+    exit(2);
+  }
+
   int n;
   char id_buf[13];
   n = sprintf(id_buf, "ID=%d\n", id);
-  write(sockfd, id_buf, n);
+  SSL_write(ssl, id_buf, n);
   if (logfd) {
     write(logfd, id_buf, n);
   }
@@ -286,7 +313,7 @@ int main(int argc, char *argv[]) {
   command = malloc(sizeof(char));
   if (command == NULL) {
     fprintf(stderr, "Dynamic allocation of input buffer failed: %s\n", strerror(errno));
-    exit(1);
+    exit(2);
   }
 
   int command_size = 0;
@@ -298,7 +325,7 @@ int main(int argc, char *argv[]) {
     }
     /* Read from user input */
     if (ret > 0) {
-      n = read(fds[0].fd, buf, 1024);
+      n = SSL_read(ssl, buf, 1024);
       if (n < 0) {
         fprintf(stderr, "Read from stdin failed: %s\r\n", strerror(errno));
         exit(2);
@@ -326,7 +353,7 @@ int main(int argc, char *argv[]) {
       if ((n = get_localtime(buf, 0)) > 0) {
         float rval = read_temp();
         n = sprintf(buf, "%s %.1f\n", buf, rval);
-        write(fds[0].fd, buf, n);
+        SSL_write(ssl, buf, n);
         if (logfd) {
           write(logfd, buf, n);
         }
